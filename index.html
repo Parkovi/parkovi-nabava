@@ -3324,9 +3324,30 @@ const SB_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
       const ki = document.getElementById('sb-key-input');
       if(ui) ui.value = url;
       if(ki) ki.value = key;
+      handlePasswordRecovery();
     }
   } catch(e){console.warn('SB init error:', e);}
 })();
+
+// Obrada linka "zaboravljena lozinka" iz emaila (#access_token=...&type=recovery)
+async function handlePasswordRecovery(){
+  if(!location.hash.includes('type=recovery')) return;
+  setTimeout(async ()=>{
+    try{
+      const {data:{session}} = await SB.auth.getSession();
+      if(!session){ alert('Link za reset lozinke je istekao ili nevažeći. Zatraži novi.'); history.replaceState(null,'',location.pathname); return; }
+      let np='';
+      while(!np || np.length<6){
+        np = prompt('Unesite novu lozinku (najmanje 6 znakova):');
+        if(np===null){ history.replaceState(null,'',location.pathname); return; }
+      }
+      const {error} = await SB.auth.updateUser({password:np});
+      history.replaceState(null,'',location.pathname);
+      if(error){ alert('Greška: '+error.message); }
+      else { alert('✅ Lozinka je uspješno promijenjena! Sad se prijavite s novom lozinkom.'); await SB.auth.signOut(); location.reload(); }
+    }catch(e){ console.error(e); alert('Greška pri obradi linka: '+e.message); }
+  }, 600);
+}
 
 async function connectSupabase(){
   const url = document.getElementById('sb-url-input').value.trim();
