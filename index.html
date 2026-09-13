@@ -753,13 +753,19 @@ select{cursor:pointer}
       <div class="page" id="page-plan-nabave">
         <div class="ph">
           <div><div class="pt">Plan nabave</div><div class="ps">Godišnji plan i praćenje realizacije</div></div>
-          <button class="btn bp" id="btn-nova-plan" onclick="openNovaPlanStavka()"><i class="ti ti-plus"></i> Nova stavka plana</button>
+          <div class="phr" style="display:flex;gap:8px">
+            <button class="btn bs" id="btn-plan-usporedi" onclick="openUsporedbaVerzija()"><i class="ti ti-git-compare"></i> Usporedi verzije</button>
+            <button class="btn bs" id="btn-plan-uvoz" onclick="openUvozPlana()"><i class="ti ti-file-upload"></i> Uvezi izmjenu/dopunu</button>
+            <button class="btn bp" id="btn-nova-plan" onclick="openNovaPlanStavka()"><i class="ti ti-plus"></i> Nova stavka plana</button>
+          </div>
         </div>
         <div class="card" style="padding:1rem;margin-bottom:1rem">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <div class="fg" style="margin:0"><label class="fl">Godina</label><select id="plan-fg" onchange="loadPlanNabave()"><option value="2026">2026</option><option value="2027">2027</option><option value="2025">2025</option></select></div>
+            <div class="fg" style="margin:0"><label class="fl">Godina</label><select id="plan-fg" onchange="onPlanGodinaChange()"></select></div>
+            <div class="fg" style="margin:0"><label class="fl">Verzija</label><select id="plan-fv" onchange="loadPlanNabave()"></select></div>
             <div class="fg" style="margin:0"><label class="fl">Status</label><select id="plan-fs" onchange="loadPlanNabave()"><option value="">Svi</option><option value="planirano">Planirano</option><option value="u_realizaciji">U realizaciji</option><option value="realizirano">Realizirano</option><option value="otkazano">Otkazano</option></select></div>
           </div>
+          <div id="plan-verzija-info" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
         </div>
         <div class="mgr" id="plan-metrics"></div>
         <div class="card"><div id="plan-list"><div class="empty"><i class="ti ti-clipboard-list"></i><p>Učitavam...</p></div></div></div>
@@ -768,6 +774,54 @@ select{cursor:pointer}
 
 <!-- MODALI -->
 
+
+<!-- MODAL: Uvoz izmjene/dopune plana nabave -->
+<div class="mo" id="mo-plan-uvoz">
+  <div class="md" style="max-width:600px">
+    <div class="mhd">
+      <div class="mtt"><i class="ti ti-file-upload"></i> Uvezi izmjenu/dopunu plana</div>
+      <button class="mcl" onclick="closeM('mo-plan-uvoz')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mb">
+      <div class="al ali" style="margin-bottom:12px">Datoteka mora imati isti oblik kao službeni EOJN izvoz plana nabave (list "Plan nabave", zaglavlje stupaca u 7. retku). Stara verzija ostaje sačuvana — ništa se ne briše.</div>
+      <div class="fb">
+        <div class="fg"><label class="fl">Godina</label><input type="number" id="uvoz-godina" value="2026"></div>
+        <div class="fg"><label class="fl">Nova verzija (broj)</label><input type="number" id="uvoz-verzija"></div>
+        <div class="fg"><label class="fl">Datum donošenja</label><input type="date" id="uvoz-datum"></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Napomena o izmjeni</label><input type="text" id="uvoz-napomena" placeholder="npr. Izmjena i dopuna br. 5 — dodane 3 nove stavke"></div>
+        <div class="fg" style="grid-column:1/-1">
+          <label class="fl">Excel datoteka (.xlsx)</label>
+          <input type="file" id="uvoz-file" accept=".xlsx">
+        </div>
+      </div>
+      <div id="uvoz-al" style="margin-top:8px"></div>
+    </div>
+    <div class="mft">
+      <button class="btn bs" onclick="closeM('mo-plan-uvoz')">Odustani</button>
+      <button class="btn bp" onclick="uvezPlanNabave()"><i class="ti ti-upload"></i> Uvezi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Usporedba verzija plana -->
+<div class="mo" id="mo-plan-usporedba">
+  <div class="md" style="max-width:900px">
+    <div class="mhd">
+      <div class="mtt"><i class="ti ti-git-compare"></i> Usporedba verzija plana</div>
+      <button class="mcl" onclick="closeM('mo-plan-usporedba')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mb">
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:16px">
+        <div class="fg" style="margin:0"><label class="fl">Godina</label><select id="usp-godina" onchange="popuniUsporedbaVerzije()"></select></div>
+        <div class="fg" style="margin:0"><label class="fl">Stara verzija</label><select id="usp-stara"></select></div>
+        <div class="fg" style="margin:0"><label class="fl">Nova verzija</label><select id="usp-nova"></select></div>
+        <button class="btn bp" onclick="usporediVerzije()" style="margin:0"><i class="ti ti-refresh"></i> Usporedi</button>
+      </div>
+      <div id="usp-rezultat"></div>
+    </div>
+    <div class="mft"><button class="btn bs" onclick="closeM('mo-plan-usporedba')">Zatvori</button></div>
+  </div>
+</div>
 
 <!-- MODAL: Nova/Uredi stavka plana nabave -->
 <div class="mo" id="mo-plan-nabave">
@@ -779,6 +833,7 @@ select{cursor:pointer}
     <div class="mb">
       <div class="fb">
         <div class="fg"><label class="fl">Godina</label><input type="number" id="plan-godina" value="2026"></div>
+        <div class="fg"><label class="fl">Verzija</label><input type="number" id="plan-verzija" value="1"></div>
         <div class="fg"><label class="fl">Redni broj</label><input type="number" id="plan-rbr"></div>
         <div class="fg"><label class="fl">Evidencijski broj nabave</label><input type="text" id="plan-evbr" placeholder="npr. 1-2026"></div>
         <div class="fg" style="grid-column:1/-1"><label class="fl">Predmet nabave <span class="req">*</span></label><input type="text" id="plan-predmet" placeholder="npr. Sadnice drveća za park Marjan"></div>
@@ -4747,10 +4802,16 @@ async function openNovaNarudzbenica(zahId){
   const {data:zahs}=await SB.from('zahtjevnice').select('id,broj,mjesto_troska').in('status',['kod_nabave','u_obradi']).order('id',{ascending:false});
   document.getElementById('nar-zah').innerHTML='<option value="">– bez veze –</option>'+(zahs||[]).map(z=>`<option value="${z.id}" ${z.id===zahId?'selected':''}>${z.broj} – ${z.mjesto_troska||''}</option>`).join('');
 
-  // Load plan nabave (tekuća godina)
+  // Load plan nabave (tekuća godina, samo najnovija verzija)
   const planGod=new Date().getFullYear();
-  const {data:planStavke}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',planGod).order('redni_broj');
-  document.getElementById('nar-plan').innerHTML='<option value="">– bez veze –</option>'+(planStavke||[]).map(p=>`<option value="${p.id}">${p.predmet_nabave}</option>`).join('');
+  const {data:planVerz}=await SB.from('plan_nabave_verzije').select('verzija').eq('godina',planGod).order('verzija',{ascending:false}).limit(1);
+  const najnovijaVerz=planVerz?.[0]?.verzija;
+  let planStavke=[];
+  if(najnovijaVerz){
+    const {data}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',planGod).eq('verzija',najnovijaVerz).order('redni_broj');
+    planStavke=data||[];
+  }
+  document.getElementById('nar-plan').innerHTML='<option value="">– bez veze –</option>'+planStavke.map(p=>`<option value="${p.id}">${p.predmet_nabave}</option>`).join('');
 
   // If linked to zahtjevnica, prefill stavke + prenesi eventualnu ponudu
   if(zahId){
@@ -5334,16 +5395,58 @@ const PLAN_STATUS={
 async function setupPlanNabave(){
   const btn=document.getElementById('btn-nova-plan');
   if(btn) btn.style.display=canProcessNabava()?'':'none';
+  const btnU=document.getElementById('btn-plan-uvoz');
+  if(btnU) btnU.style.display=canProcessNabava()?'':'none';
+  await popuniPlanGodine();
+  await onPlanGodinaChange();
+}
+
+async function popuniPlanGodine(){
+  const sel=document.getElementById('plan-fg');
+  const trenutna=new Date().getFullYear();
+  const {data:verzije}=await SB.from('plan_nabave_verzije').select('godina').order('godina',{ascending:false});
+  const godine=new Set((verzije||[]).map(v=>v.godina));
+  godine.add(trenutna); godine.add(trenutna+1); godine.add(trenutna-1);
+  const sortirane=[...godine].sort((a,b)=>b-a);
+  const prev=sel.value;
+  sel.innerHTML=sortirane.map(g=>`<option value="${g}">${g}.</option>`).join('');
+  sel.value=prev&&sortirane.includes(parseInt(prev))?prev:trenutna;
+}
+
+async function onPlanGodinaChange(){
+  await popuniPlanVerzije();
   await loadPlanNabave();
+}
+
+async function popuniPlanVerzije(){
+  const god=parseInt(document.getElementById('plan-fg').value);
+  const sel=document.getElementById('plan-fv');
+  const {data:verzije}=await SB.from('plan_nabave_verzije').select('*').eq('godina',god).order('verzija',{ascending:false});
+  if(!verzije||!verzije.length){
+    sel.innerHTML='<option value="">– nema unesenih verzija –</option>';
+    document.getElementById('plan-verzija-info').textContent='';
+    return;
+  }
+  sel.innerHTML=verzije.map((v,i)=>`<option value="${v.verzija}">Verzija ${v.verzija}${i===0?' (aktivna)':''}</option>`).join('');
+  sel.onchange=()=>{ loadPlanNabave(); prikaziVerzijaInfo(verzije); };
+  prikaziVerzijaInfo(verzije);
+}
+
+function prikaziVerzijaInfo(verzije){
+  const v=verzije.find(x=>x.verzija==document.getElementById('plan-fv').value)||verzije[0];
+  document.getElementById('plan-verzija-info').textContent=v?`Verzija ${v.verzija}${v.datum_donosenja?' · doneseno '+v.datum_donosenja:''}${v.napomena?' · '+v.napomena:''}`:'';
 }
 
 async function loadPlanNabave(){
   const god=parseInt(document.getElementById('plan-fg').value)||2026;
+  const verzSel=document.getElementById('plan-fv').value;
   const st=document.getElementById('plan-fs').value;
   const el=document.getElementById('plan-list');
   el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
+  if(!verzSel){ el.innerHTML='<div class="empty"><i class="ti ti-clipboard-list"></i><p>Nema unesenog plana za ovu godinu. Klikni "Uvezi izmjenu/dopunu" ili "Nova stavka plana".</p></div>'; document.getElementById('plan-metrics').innerHTML=''; return; }
+  const verz=parseInt(verzSel);
   try{
-    let q=SB.from('plan_nabave').select('*').eq('godina',god).order('redni_broj',{ascending:true,nullsFirst:false});
+    let q=SB.from('plan_nabave').select('*').eq('godina',god).eq('verzija',verz).order('redni_broj',{ascending:true,nullsFirst:false});
     const {data:stavke,error}=await q;
     if(error) throw error;
 
@@ -5378,6 +5481,7 @@ async function loadPlanNabave(){
       <div class="metric mam"><div class="ml">Planirano ukupno</div><div class="mv">${totPlan.toLocaleString('hr-HR',{maximumFractionDigits:0})} €</div><div class="ms">bez PDV</div></div>
       <div class="metric mgr3"><div class="ml">Realizirano</div><div class="mv">${totRealiz.toLocaleString('hr-HR',{maximumFractionDigits:0})} €</div><div class="ms">kroz narudžbenice</div></div>
       <div class="metric ${pctUk>=100?'mgr3':'mbl'}"><div class="ml">% realizacije</div><div class="mv">${pctUk}%</div><div class="ms">ukupno</div></div>`;
+
 
     if(!filtered.length){ el.innerHTML='<div class="empty"><i class="ti ti-clipboard-list"></i><p>Nema stavki plana za odabranu godinu/status.</p></div>'; return; }
 
@@ -5419,6 +5523,7 @@ function openNovaPlanStavka(){
   window._planEdit=null;
   document.getElementById('plan-modal-title').textContent='Nova stavka plana';
   document.getElementById('plan-godina').value=document.getElementById('plan-fg').value||2026;
+  document.getElementById('plan-verzija').value=document.getElementById('plan-fv').value||1;
   document.getElementById('plan-rbr').value='';
   document.getElementById('plan-evbr').value='';
   document.getElementById('plan-predmet').value='';
@@ -5444,6 +5549,7 @@ async function editPlanStavka(id){
   window._planEdit=id;
   document.getElementById('plan-modal-title').textContent='Uredi stavku plana';
   document.getElementById('plan-godina').value=s.godina;
+  document.getElementById('plan-verzija').value=s.verzija||1;
   document.getElementById('plan-rbr').value=s.redni_broj||'';
   document.getElementById('plan-evbr').value=s.evidencijski_broj||'';
   document.getElementById('plan-predmet').value=s.predmet_nabave||'';
@@ -5468,6 +5574,7 @@ async function savePlanStavka(){
   if(!predmet){ document.getElementById('plan-al').innerHTML='<div class="al ald">Predmet nabave je obavezan!</div>'; return; }
   const payload={
     godina:parseInt(document.getElementById('plan-godina').value)||2026,
+    verzija:parseInt(document.getElementById('plan-verzija').value)||1,
     redni_broj:parseInt(document.getElementById('plan-rbr').value)||null,
     evidencijski_broj:document.getElementById('plan-evbr').value.trim(),
     predmet_nabave:predmet,
@@ -5535,6 +5642,193 @@ async function pregledPlanRealizacija(id){
   `;
   openM('mo-plan-pregled');
 }
+
+// ══ UVOZ NOVE VERZIJE PLANA (izmjena/dopuna) ═══════════════════
+function openUvozPlana(){
+  document.getElementById('uvoz-godina').value=document.getElementById('plan-fg').value||2026;
+  const trenutnaVerz=parseInt(document.getElementById('plan-fv').value)||0;
+  document.getElementById('uvoz-verzija').value=trenutnaVerz+1;
+  document.getElementById('uvoz-datum').value=new Date().toISOString().split('T')[0];
+  document.getElementById('uvoz-napomena').value='';
+  document.getElementById('uvoz-file').value='';
+  document.getElementById('uvoz-al').innerHTML='';
+  openM('mo-plan-uvoz');
+}
+
+const PLAN_VRSTA_MAP={'Robe':'roba','Usluge':'usluga','Radovi':'radovi'};
+
+function ucitajXlsxKaoRedove(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const wsName=wb.SheetNames.find(n=>n.toLowerCase().includes('plan'))||wb.SheetNames[0];
+        const ws=wb.Sheets[wsName];
+        // Pronađi redak zaglavlja (traži 'Redni broj' u prvih 15 redaka)
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+        let headerIdx=raw.findIndex(r=>r&&r.some(c=>String(c||'').trim()==='Redni broj'));
+        if(headerIdx<0) headerIdx=6;
+        const headers=raw[headerIdx].map(h=>String(h||'').trim());
+        const rows=raw.slice(headerIdx+1).filter(r=>r&&r[0]!=null&&String(r[0]).trim()!=='');
+        const objs=rows.map(r=>{
+          const o={};
+          headers.forEach((h,i)=>{ o[h]=r[i]; });
+          return o;
+        });
+        resolve(objs);
+      }catch(err){ reject(err); }
+    };
+    reader.onerror=()=>reject(new Error('Greška pri čitanju datoteke'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function uvezPlanNabave(){
+  const godina=parseInt(document.getElementById('uvoz-godina').value)||2026;
+  const verzija=parseInt(document.getElementById('uvoz-verzija').value);
+  const datum=document.getElementById('uvoz-datum').value||null;
+  const napomena=document.getElementById('uvoz-napomena').value.trim();
+  const file=document.getElementById('uvoz-file').files[0];
+  const al=document.getElementById('uvoz-al');
+  if(!verzija){ al.innerHTML='<div class="al ald">Unesi broj verzije!</div>'; return; }
+  if(!file){ al.innerHTML='<div class="al ald">Odaberi Excel datoteku!</div>'; return; }
+  al.innerHTML='<div class="al ali"><i class="ti ti-loader-2"></i> Čitam i uvozim datoteku...</div>';
+  try{
+    const redovi=await ucitajXlsxKaoRedove(file);
+    if(!redovi.length) throw new Error('Nije pronađen nijedan redak u datoteci — provjeri format.');
+
+    const {data:postojeca}=await SB.from('plan_nabave_verzije').select('id').eq('godina',godina).eq('verzija',verzija).maybeSingle();
+    if(postojeca){ throw new Error(`Verzija ${verzija} za ${godina}. već postoji. Odaberi drugi broj verzije.`); }
+
+    await SB.from('plan_nabave_verzije').insert({godina,verzija,datum_donosenja:datum,napomena,created_by:SB_USER?.id});
+
+    const payload=redovi.map(r=>{
+      const vrijednostRaw=r['Procijenjena vrijednost nabave (EUR)'];
+      const vrijednost=(typeof vrijednostRaw==='number')?vrijednostRaw:(parseFloat(String(vrijednostRaw||'0').replace(/\./g,'').replace(',','.'))||0);
+      return {
+        godina,verzija,
+        redni_broj:parseInt(r['Redni broj'])||null,
+        evidencijski_broj:r['Evidencijski broj nabave']!=null?String(r['Evidencijski broj nabave']):null,
+        zakonski_okvir:r['Zakonski okvir']||null,
+        predmet_nabave:String(r['Predmet  javne nabave']||r['Predmet javne nabave']||'').trim(),
+        vrsta:PLAN_VRSTA_MAP[r['Vrsta ugovora']]||'roba',
+        cpv:r['CPV']||null,
+        procijenjena_vrijednost:vrijednost,
+        vrsta_postupka:r['Vrsta postupka']||null,
+        drustvene_usluge:r['Društvene i druge posebne usluge']||null,
+        podijeljen_u_grupe:r['Predmet podijeljen u grupe']||null,
+        tehnika_okvirni_sporazum:r['Tehnika / Okvirni sporazum']||null,
+        eu_fondovi:r['Financiranje iz EU fondova']||null,
+        planirani_pocetak:r['Planirani početak postupka']||null,
+        planirano_trajanje:r['Planirano trajanje ugovora / O.S.']!=null?String(r['Planirano trajanje ugovora / O.S.']):null,
+        provodi_drugi_narucitelj:r['Provodi drugi naručitelj']!=null?String(r['Provodi drugi naručitelj']):null,
+        napomena:r['Napomena']||null,
+        created_by:SB_USER?.id
+      };
+    }).filter(p=>p.predmet_nabave);
+
+    for(let i=0;i<payload.length;i+=50){
+      const {error}=await SB.from('plan_nabave').insert(payload.slice(i,i+50));
+      if(error) throw error;
+    }
+
+    closeM('mo-plan-uvoz');
+    showToast(`✅ Uvezeno ${payload.length} stavki (verzija ${verzija})!`,'success');
+    await popuniPlanGodine();
+    document.getElementById('plan-fg').value=godina;
+    await onPlanGodinaChange();
+    document.getElementById('plan-fv').value=verzija;
+    await loadPlanNabave();
+  }catch(e){
+    al.innerHTML=`<div class="al ald">Greška: ${e.message}</div>`;
+  }
+}
+
+// ══ USPOREDBA VERZIJA PLANA ════════════════════════════════════
+async function openUsporedbaVerzija(){
+  const {data:verzije}=await SB.from('plan_nabave_verzije').select('godina').order('godina',{ascending:false});
+  const godine=[...new Set((verzije||[]).map(v=>v.godina))];
+  const selG=document.getElementById('usp-godina');
+  selG.innerHTML=godine.map(g=>`<option value="${g}">${g}.</option>`).join('')||'<option value="">–</option>';
+  if(godine.includes(parseInt(document.getElementById('plan-fg').value))){
+    selG.value=document.getElementById('plan-fg').value;
+  }
+  document.getElementById('usp-rezultat').innerHTML='';
+  await popuniUsporedbaVerzije();
+  openM('mo-plan-usporedba');
+}
+
+async function popuniUsporedbaVerzije(){
+  const god=parseInt(document.getElementById('usp-godina').value);
+  const {data:verzije}=await SB.from('plan_nabave_verzije').select('*').eq('godina',god).order('verzija',{ascending:false});
+  const opts=(verzije||[]).map(v=>`<option value="${v.verzija}">Verzija ${v.verzija}</option>`).join('');
+  document.getElementById('usp-stara').innerHTML=opts;
+  document.getElementById('usp-nova').innerHTML=opts;
+  if(verzije&&verzije.length>1){
+    document.getElementById('usp-nova').value=verzije[0].verzija;
+    document.getElementById('usp-stara').value=verzije[1].verzija;
+  }
+}
+
+async function usporediVerzije(){
+  const god=parseInt(document.getElementById('usp-godina').value);
+  const vStara=parseInt(document.getElementById('usp-stara').value);
+  const vNova=parseInt(document.getElementById('usp-nova').value);
+  const el=document.getElementById('usp-rezultat');
+  if(vStara===vNova){ el.innerHTML='<div class="al ald">Odaberi dvije različite verzije.</div>'; return; }
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Uspoređujem...</p></div>';
+  const {data:staraData}=await SB.from('plan_nabave').select('*').eq('godina',god).eq('verzija',vStara);
+  const {data:novaData}=await SB.from('plan_nabave').select('*').eq('godina',god).eq('verzija',vNova);
+
+  const kljuc=s=>s.evidencijski_broj||('rb-'+s.redni_broj);
+  const staraMap=new Map((staraData||[]).map(s=>[kljuc(s),s]));
+  const novaMap=new Map((novaData||[]).map(s=>[kljuc(s),s]));
+
+  const dodano=[],uklonjeno=[],izmijenjeno=[];
+  const poljaZaUsporedbu=[['predmet_nabave','Predmet'],['procijenjena_vrijednost','Vrijednost'],['cpv','CPV'],['vrsta_postupka','Vrsta postupka'],['planirani_pocetak','Planirani početak'],['planirano_trajanje','Trajanje']];
+
+  novaMap.forEach((n,k)=>{
+    if(!staraMap.has(k)){ dodano.push(n); return; }
+    const s=staraMap.get(k);
+    const promjene=[];
+    poljaZaUsporedbu.forEach(([polje,lbl])=>{
+      const sv=s[polje], nv=n[polje];
+      if(String(sv??'')!==String(nv??'')) promjene.push({lbl,staro:sv,novo:nv});
+    });
+    if(promjene.length) izmijenjeno.push({stavka:n,promjene});
+  });
+  staraMap.forEach((s,k)=>{ if(!novaMap.has(k)) uklonjeno.push(s); });
+
+  const nepromijenjeno=novaMap.size-dodano.length-izmijenjeno.length;
+
+  el.innerHTML=`
+    <div style="display:flex;gap:16px;margin-bottom:16px">
+      <div class="metric mgr3" style="flex:1"><div class="ml">Dodano</div><div class="mv">${dodano.length}</div></div>
+      <div class="metric mam" style="flex:1"><div class="ml">Izmijenjeno</div><div class="mv">${izmijenjeno.length}</div></div>
+      <div class="metric mrd" style="flex:1"><div class="ml">Uklonjeno</div><div class="mv">${uklonjeno.length}</div></div>
+      <div class="metric" style="flex:1"><div class="ml">Nepromijenjeno</div><div class="mv">${nepromijenjeno}</div></div>
+    </div>
+
+    ${dodano.length?`<div style="font-weight:600;color:#22863a;margin-bottom:6px"><i class="ti ti-plus"></i> Dodano (${dodano.length})</div>
+    <div class="tw" style="margin-bottom:16px"><table><thead><tr><th>RB.</th><th>Evid. broj</th><th>Predmet</th><th>Vrijednost</th></tr></thead><tbody>
+      ${dodano.map(s=>`<tr><td>${s.redni_broj||'–'}</td><td>${s.evidencijski_broj||'–'}</td><td>${s.predmet_nabave}</td><td>${(s.procijenjena_vrijednost||0).toLocaleString('hr-HR')} €</td></tr>`).join('')}
+    </tbody></table></div>`:''}
+
+    ${izmijenjeno.length?`<div style="font-weight:600;color:#e6a817;margin-bottom:6px"><i class="ti ti-edit"></i> Izmijenjeno (${izmijenjeno.length})</div>
+    <div class="tw" style="margin-bottom:16px"><table><thead><tr><th>Predmet</th><th>Polje</th><th>Staro</th><th>Novo</th></tr></thead><tbody>
+      ${izmijenjeno.map(({stavka,promjene})=>promjene.map((p,i)=>`<tr><td>${i===0?stavka.predmet_nabave:''}</td><td>${p.lbl}</td><td>${p.staro??'–'}</td><td><strong>${p.novo??'–'}</strong></td></tr>`).join('')).join('')}
+    </tbody></table></div>`:''}
+
+    ${uklonjeno.length?`<div style="font-weight:600;color:#c0392b;margin-bottom:6px"><i class="ti ti-minus"></i> Uklonjeno (${uklonjeno.length})</div>
+    <div class="tw"><table><thead><tr><th>RB.</th><th>Evid. broj</th><th>Predmet</th><th>Vrijednost</th></tr></thead><tbody>
+      ${uklonjeno.map(s=>`<tr><td>${s.redni_broj||'–'}</td><td>${s.evidencijski_broj||'–'}</td><td>${s.predmet_nabave}</td><td>${(s.procijenjena_vrijednost||0).toLocaleString('hr-HR')} €</td></tr>`).join('')}
+    </tbody></table></div>`:''}
+
+    ${!dodano.length&&!izmijenjeno.length&&!uklonjeno.length?'<div class="empty"><p>Nema razlika između odabranih verzija.</p></div>':''}
+  `;
+}
+
 
 </script>
 </body>
