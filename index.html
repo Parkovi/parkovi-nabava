@@ -323,6 +323,7 @@ select{cursor:pointer}
         <div class="ni" onclick="sP('zahtjevnice')" id="nav-zahtjevnice"><i class="ti ti-file-description"></i> Zahtjevnice</div>
         <div class="ni" onclick="sP('narudzbenice')" id="nav-narudzbenice"><i class="ti ti-shopping-cart"></i> Narudžbenice</div>
         <div class="ni" onclick="sP('dobavljaci')" id="nav-dobavljaci"><i class="ti ti-building-store"></i> Dobavljači</div>
+        <div class="ni" onclick="sP('plan-nabave')" id="nav-plan-nabave"><i class="ti ti-clipboard-list"></i> Plan nabave</div>
       </div>
       <div class="sg" id="anav" style="display:none">
         <div class="sgl">Administracija</div>
@@ -748,8 +749,85 @@ select{cursor:pointer}
         <div class="card"><div id="dob-list"><div class="empty"><i class="ti ti-building-store"></i><p>Učitavam...</p></div></div></div>
       </div>
 
+      <!-- PLAN NABAVE -->
+      <div class="page" id="page-plan-nabave">
+        <div class="ph">
+          <div><div class="pt">Plan nabave</div><div class="ps">Godišnji plan i praćenje realizacije</div></div>
+          <button class="btn bp" id="btn-nova-plan" onclick="openNovaPlanStavka()"><i class="ti ti-plus"></i> Nova stavka plana</button>
+        </div>
+        <div class="card" style="padding:1rem;margin-bottom:1rem">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div class="fg" style="margin:0"><label class="fl">Godina</label><select id="plan-fg" onchange="loadPlanNabave()"><option value="2026">2026</option><option value="2027">2027</option><option value="2025">2025</option></select></div>
+            <div class="fg" style="margin:0"><label class="fl">Status</label><select id="plan-fs" onchange="loadPlanNabave()"><option value="">Svi</option><option value="planirano">Planirano</option><option value="u_realizaciji">U realizaciji</option><option value="realizirano">Realizirano</option><option value="otkazano">Otkazano</option></select></div>
+          </div>
+        </div>
+        <div class="mgr" id="plan-metrics"></div>
+        <div class="card"><div id="plan-list"><div class="empty"><i class="ti ti-clipboard-list"></i><p>Učitavam...</p></div></div></div>
+      </div>
+
 
 <!-- MODALI -->
+
+
+<!-- MODAL: Nova/Uredi stavka plana nabave -->
+<div class="mo" id="mo-plan-nabave">
+  <div class="md" style="max-width:700px">
+    <div class="mhd">
+      <div class="mtt"><i class="ti ti-clipboard-list"></i> <span id="plan-modal-title">Nova stavka plana</span></div>
+      <button class="mcl" onclick="closeM('mo-plan-nabave')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mb">
+      <div class="fb">
+        <div class="fg"><label class="fl">Godina</label><input type="number" id="plan-godina" value="2026"></div>
+        <div class="fg"><label class="fl">Redni broj</label><input type="number" id="plan-rbr"></div>
+        <div class="fg"><label class="fl">Evidencijski broj nabave</label><input type="text" id="plan-evbr" placeholder="npr. 1-2026"></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Predmet nabave <span class="req">*</span></label><input type="text" id="plan-predmet" placeholder="npr. Sadnice drveća za park Marjan"></div>
+        <div class="fg"><label class="fl">Zakonski okvir</label><select id="plan-zakonski">
+          <option value="Zakon o javnoj nabavi">Zakon o javnoj nabavi</option>
+          <option value="Jednostavna nabava">Jednostavna nabava</option>
+        </select></div>
+        <div class="fg"><label class="fl">Vrsta ugovora</label><select id="plan-vrsta"><option value="roba">Robe</option><option value="usluga">Usluge</option><option value="radovi">Radovi</option></select></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">CPV</label><input type="text" id="plan-cpv" placeholder="npr. 03452000 - Drveće"></div>
+        <div class="fg"><label class="fl">Procijenjena vrijednost (EUR, bez PDV)</label><input type="number" id="plan-vrijednost" step="0.01" value="0"></div>
+        <div class="fg"><label class="fl">Vrsta postupka</label><select id="plan-postupak">
+          <option value="Otvoreni postupak">Otvoreni postupak</option>
+          <option value="Jednostavna nabava">Jednostavna nabava</option>
+          <option value="Nabava izuzeta od primjene ZJN">Nabava izuzeta od primjene ZJN</option>
+        </select></div>
+        <div class="fg"><label class="fl">Planirani početak postupka</label><select id="plan-pocetak">
+          <option value="">–</option>
+          <option value="1. kvartal">1. kvartal</option><option value="2. kvartal">2. kvartal</option>
+          <option value="3. kvartal">3. kvartal</option><option value="4. kvartal">4. kvartal</option>
+        </select></div>
+        <div class="fg"><label class="fl">Planirano trajanje ugovora / O.S.</label><input type="text" id="plan-trajanje" placeholder="npr. do 31.12.2026. ili 210 dana"></div>
+        <div class="fg"><label class="fl">Predmet podijeljen u grupe</label><select id="plan-grupe"><option value="NE">NE</option><option value="DA">DA</option></select></div>
+        <div class="fg"><label class="fl">Financiranje iz EU fondova</label><select id="plan-eu"><option value="NE">NE</option><option value="DA">DA</option></select></div>
+        <div class="fg"><label class="fl">Tehnika / Okvirni sporazum</label><input type="text" id="plan-tehnika"></div>
+        <div class="fg"><label class="fl">Provodi drugi naručitelj</label><input type="text" id="plan-drugi" placeholder="npr. OIB - naziv naručitelja"></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Napomena</label><textarea id="plan-nap" rows="2"></textarea></div>
+      </div>
+      <div id="plan-al" style="margin-top:8px"></div>
+    </div>
+    <div class="mft">
+      <button class="btn bs" onclick="closeM('mo-plan-nabave')">Odustani</button>
+      <button class="btn bp" onclick="savePlanStavka()"><i class="ti ti-device-floppy"></i> Spremi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Pregled realizacije stavke plana -->
+<div class="mo" id="mo-plan-pregled">
+  <div class="md" style="max-width:700px">
+    <div class="mhd">
+      <div class="mtt"><i class="ti ti-chart-bar"></i> <span id="plan-pregled-title">Realizacija</span></div>
+      <button class="mcl" onclick="closeM('mo-plan-pregled')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mb" id="plan-pregled-content"></div>
+    <div class="mft"><button class="btn bs" onclick="closeM('mo-plan-pregled')">Zatvori</button></div>
+  </div>
+</div>
+
+
 
 
 <!-- MODAL: Novi unos stimulacije -->
@@ -1013,6 +1091,9 @@ select{cursor:pointer}
           <input type="date" id="nar-datum"></div>
         <div class="fg" style="margin:0"><label class="fl">Zahtjevnica</label>
           <select id="nar-zah"><option value="">– bez veze –</option></select>
+        </div>
+        <div class="fg" style="margin:0"><label class="fl">Stavka plana nabave</label>
+          <select id="nar-plan"><option value="">– bez veze –</option></select>
         </div>
       </div>
 
@@ -1618,7 +1699,7 @@ function sP(n){
   document.querySelectorAll(".ni").forEach(x=>x.classList.remove("active"));
   document.getElementById("page-"+n)?.classList.add("active");
   document.getElementById("nav-"+n)?.classList.add("active");
-  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke})[n]?.();
+  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'plan-nabave':setupPlanNabave})[n]?.();
 }
 
 function vJ(){
@@ -4666,6 +4747,11 @@ async function openNovaNarudzbenica(zahId){
   const {data:zahs}=await SB.from('zahtjevnice').select('id,broj,mjesto_troska').in('status',['kod_nabave','u_obradi']).order('id',{ascending:false});
   document.getElementById('nar-zah').innerHTML='<option value="">– bez veze –</option>'+(zahs||[]).map(z=>`<option value="${z.id}" ${z.id===zahId?'selected':''}>${z.broj} – ${z.mjesto_troska||''}</option>`).join('');
 
+  // Load plan nabave (tekuća godina)
+  const planGod=new Date().getFullYear();
+  const {data:planStavke}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',planGod).order('redni_broj');
+  document.getElementById('nar-plan').innerHTML='<option value="">– bez veze –</option>'+(planStavke||[]).map(p=>`<option value="${p.id}">${p.predmet_nabave}</option>`).join('');
+
   // If linked to zahtjevnica, prefill stavke + prenesi eventualnu ponudu
   if(zahId){
     const {data:zst}=await SB.from('zahtjevnice_stavke').select('*').eq('zahtjevnica_id',zahId).order('rbr');
@@ -4774,6 +4860,7 @@ async function saveNarudzbenica(status){
   const broj=document.getElementById('nar-broj').value.trim();
   const datum=document.getElementById('nar-datum').value;
   const zahId=document.getElementById('nar-zah').value||null;
+  const planId=parseInt(document.getElementById('nar-plan').value)||null;
   const dobNaziv=document.getElementById('nar-dob-naziv').value.trim();
   const dobOib=document.getElementById('nar-dob-oib').value.trim();
   const dobAdresa=document.getElementById('nar-dob-adresa').value.trim();
@@ -4808,7 +4895,7 @@ async function saveNarudzbenica(status){
     calcNarTotals();
     const t=window._narTotals;
 
-    const payload={broj,godina:god,datum,zahtjevnica_id:zahId||null,
+    const payload={broj,godina:god,datum,zahtjevnica_id:zahId||null,plan_stavka_id:planId,
       dobavljac_id:dobId,dobavljac_naziv:dobNaziv,dobavljac_oib:dobOib,dobavljac_adresa:dobAdresa,
       rok_isporuke:rok,mjesto_isporuke:mjesto,nacin_otpreme:otprema,napomene:nap,
       vrsta:'roba',status,
@@ -5023,6 +5110,7 @@ async function editNarudzbenica(id){
   document.getElementById('nar-mjesto').value=n.mjesto_isporuke||'';
   document.getElementById('nar-otprema').value=n.nacin_otpreme||'Po dogovoru';
   document.getElementById('nar-nap').value=n.napomene||'';
+  if(n.plan_stavka_id) document.getElementById('nar-plan').value=n.plan_stavka_id;
   window._narStavke=(stavke||[]).map(s=>({naziv:s.naziv,jed_mjere:s.jed_mjere||'kom',kolicina:s.kolicina||1,cijena:s.cijena_bez_pdv||0,pdv:s.pdv_stopa||25}));
   renderNarStavke();
 
@@ -5234,6 +5322,220 @@ function openM(id){document.getElementById(id).classList.add("open");}
 function closeM(id){document.getElementById(id).classList.remove("open");}
 document.addEventListener("click",e=>{if(e.target.classList.contains("mo"))e.target.classList.remove("open");});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".mo.open").forEach(m=>m.classList.remove("open"));});
+
+// ══ PLAN NABAVE ═══════════════════════════════════════════════
+const PLAN_STATUS={
+  planirano:{lbl:'Planirano',cls:'bdg bgy'},
+  u_realizaciji:{lbl:'U realizaciji',cls:'bdg bam'},
+  realizirano:{lbl:'Realizirano',cls:'bdg bgr'},
+  otkazano:{lbl:'Otkazano',cls:'bdg bad'}
+};
+
+async function setupPlanNabave(){
+  const btn=document.getElementById('btn-nova-plan');
+  if(btn) btn.style.display=canProcessNabava()?'':'none';
+  await loadPlanNabave();
+}
+
+async function loadPlanNabave(){
+  const god=parseInt(document.getElementById('plan-fg').value)||2026;
+  const st=document.getElementById('plan-fs').value;
+  const el=document.getElementById('plan-list');
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
+  try{
+    let q=SB.from('plan_nabave').select('*').eq('godina',god).order('redni_broj',{ascending:true,nullsFirst:false});
+    const {data:stavke,error}=await q;
+    if(error) throw error;
+
+    // Dohvati sve narudžbenice povezane s planom za ovu godinu (za izračun realizacije)
+    const ids=(stavke||[]).map(s=>s.id);
+    let realizacija={};
+    if(ids.length){
+      const {data:nar}=await SB.from('narudzbenice').select('plan_stavka_id,ukupno_bez_pdv,status').in('plan_stavka_id',ids);
+      (nar||[]).forEach(n=>{
+        if(!['odobrena','poslana'].includes(n.status)) return;
+        realizacija[n.plan_stavka_id]=(realizacija[n.plan_stavka_id]||0)+(n.ukupno_bez_pdv||0);
+      });
+    }
+
+    let filtered=(stavke||[]).map(s=>{
+      const realiz=realizacija[s.id]||0;
+      const pct=s.procijenjena_vrijednost>0?Math.round(realiz/s.procijenjena_vrijednost*100):0;
+      let autoStatus=s.status;
+      if(s.status!=='otkazano'){
+        autoStatus=realiz<=0?'planirano':(pct>=100?'realizirano':'u_realizaciji');
+      }
+      return {...s,_realiz:realiz,_pct:pct,_autoStatus:autoStatus};
+    });
+    if(st) filtered=filtered.filter(s=>s._autoStatus===st);
+
+    // Metrike na vrhu
+    const totPlan=filtered.reduce((a,s)=>a+(s.procijenjena_vrijednost||0),0);
+    const totRealiz=filtered.reduce((a,s)=>a+s._realiz,0);
+    const pctUk=totPlan>0?Math.round(totRealiz/totPlan*100):0;
+    document.getElementById('plan-metrics').innerHTML=`
+      <div class="metric mbl"><div class="ml">Stavki plana</div><div class="mv">${filtered.length}</div><div class="ms">za ${god}.</div></div>
+      <div class="metric mam"><div class="ml">Planirano ukupno</div><div class="mv">${totPlan.toLocaleString('hr-HR',{maximumFractionDigits:0})} €</div><div class="ms">bez PDV</div></div>
+      <div class="metric mgr3"><div class="ml">Realizirano</div><div class="mv">${totRealiz.toLocaleString('hr-HR',{maximumFractionDigits:0})} €</div><div class="ms">kroz narudžbenice</div></div>
+      <div class="metric ${pctUk>=100?'mgr3':'mbl'}"><div class="ml">% realizacije</div><div class="mv">${pctUk}%</div><div class="ms">ukupno</div></div>`;
+
+    if(!filtered.length){ el.innerHTML='<div class="empty"><i class="ti ti-clipboard-list"></i><p>Nema stavki plana za odabranu godinu/status.</p></div>'; return; }
+
+    el.innerHTML=`<div class="tw"><table><thead><tr>
+      <th>RB.</th><th>Evid. broj</th><th>Predmet nabave</th><th>Vrsta</th><th>Postupak</th><th>Početak</th>
+      <th>Procijenjeno</th><th>Realizirano</th><th>%</th><th>Status</th><th>Akcije</th>
+    </tr></thead><tbody>
+    ${filtered.map(s=>{
+      const st2=PLAN_STATUS[s._autoStatus]||{lbl:s._autoStatus,cls:'bdg bgy'};
+      const barColor=s._pct>=100?'#22863a':(s._pct>0?'#e6a817':'#ccc');
+      return `<tr>
+        <td>${s.redni_broj||'–'}</td>
+        <td style="font-size:12px">${s.evidencijski_broj||'–'}</td>
+        <td style="font-weight:500">${s.predmet_nabave}</td>
+        <td>${s.vrsta||'roba'}</td>
+        <td style="font-size:12px">${s.vrsta_postupka||'–'}</td>
+        <td style="font-size:12px">${s.planirani_pocetak||'–'}</td>
+        <td>${(s.procijenjena_vrijednost||0).toLocaleString('hr-HR',{maximumFractionDigits:0})} €</td>
+        <td>${s._realiz.toLocaleString('hr-HR',{maximumFractionDigits:0})} €</td>
+        <td>
+          <div style="width:60px;height:6px;background:#eee;border-radius:3px;overflow:hidden;margin-bottom:2px">
+            <div style="width:${Math.min(s._pct,100)}%;height:100%;background:${barColor}"></div>
+          </div>
+          <span style="font-size:11px">${s._pct}%</span>
+        </td>
+        <td><span class="${st2.cls}">${st2.lbl}</span></td>
+        <td style="display:flex;gap:4px">
+          <button class="btn bsm bs" onclick="pregledPlanRealizacija(${s.id})"><i class="ti ti-chart-bar"></i></button>
+          ${canProcessNabava()?`<button class="btn bsm bs" onclick="editPlanStavka(${s.id})"><i class="ti ti-edit"></i></button>
+          <button class="btn bsm bd" onclick="delPlanStavka(${s.id},'${(s.predmet_nabave||'').replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button>`:''}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+  }catch(e){ el.innerHTML=`<div class="al ald">Greška: ${e.message}</div>`; }
+}
+
+function openNovaPlanStavka(){
+  window._planEdit=null;
+  document.getElementById('plan-modal-title').textContent='Nova stavka plana';
+  document.getElementById('plan-godina').value=document.getElementById('plan-fg').value||2026;
+  document.getElementById('plan-rbr').value='';
+  document.getElementById('plan-evbr').value='';
+  document.getElementById('plan-predmet').value='';
+  document.getElementById('plan-zakonski').value='Jednostavna nabava';
+  document.getElementById('plan-vrsta').value='roba';
+  document.getElementById('plan-cpv').value='';
+  document.getElementById('plan-vrijednost').value=0;
+  document.getElementById('plan-postupak').value='Jednostavna nabava';
+  document.getElementById('plan-pocetak').value='';
+  document.getElementById('plan-trajanje').value='';
+  document.getElementById('plan-grupe').value='NE';
+  document.getElementById('plan-eu').value='NE';
+  document.getElementById('plan-tehnika').value='';
+  document.getElementById('plan-drugi').value='';
+  document.getElementById('plan-nap').value='';
+  document.getElementById('plan-al').innerHTML='';
+  openM('mo-plan-nabave');
+}
+
+async function editPlanStavka(id){
+  const {data:s}=await SB.from('plan_nabave').select('*').eq('id',id).single();
+  if(!s) return;
+  window._planEdit=id;
+  document.getElementById('plan-modal-title').textContent='Uredi stavku plana';
+  document.getElementById('plan-godina').value=s.godina;
+  document.getElementById('plan-rbr').value=s.redni_broj||'';
+  document.getElementById('plan-evbr').value=s.evidencijski_broj||'';
+  document.getElementById('plan-predmet').value=s.predmet_nabave||'';
+  document.getElementById('plan-zakonski').value=s.zakonski_okvir||'Jednostavna nabava';
+  document.getElementById('plan-vrsta').value=s.vrsta||'roba';
+  document.getElementById('plan-cpv').value=s.cpv||'';
+  document.getElementById('plan-vrijednost').value=s.procijenjena_vrijednost||0;
+  document.getElementById('plan-postupak').value=s.vrsta_postupka||'Jednostavna nabava';
+  document.getElementById('plan-pocetak').value=s.planirani_pocetak||'';
+  document.getElementById('plan-trajanje').value=s.planirano_trajanje||'';
+  document.getElementById('plan-grupe').value=s.podijeljen_u_grupe||'NE';
+  document.getElementById('plan-eu').value=s.eu_fondovi||'NE';
+  document.getElementById('plan-tehnika').value=s.tehnika_okvirni_sporazum||'';
+  document.getElementById('plan-drugi').value=s.provodi_drugi_narucitelj||'';
+  document.getElementById('plan-nap').value=s.napomena||'';
+  document.getElementById('plan-al').innerHTML='';
+  openM('mo-plan-nabave');
+}
+
+async function savePlanStavka(){
+  const predmet=document.getElementById('plan-predmet').value.trim();
+  if(!predmet){ document.getElementById('plan-al').innerHTML='<div class="al ald">Predmet nabave je obavezan!</div>'; return; }
+  const payload={
+    godina:parseInt(document.getElementById('plan-godina').value)||2026,
+    redni_broj:parseInt(document.getElementById('plan-rbr').value)||null,
+    evidencijski_broj:document.getElementById('plan-evbr').value.trim(),
+    predmet_nabave:predmet,
+    zakonski_okvir:document.getElementById('plan-zakonski').value,
+    vrsta:document.getElementById('plan-vrsta').value,
+    cpv:document.getElementById('plan-cpv').value.trim(),
+    procijenjena_vrijednost:parseFloat(document.getElementById('plan-vrijednost').value)||0,
+    vrsta_postupka:document.getElementById('plan-postupak').value,
+    planirani_pocetak:document.getElementById('plan-pocetak').value,
+    planirano_trajanje:document.getElementById('plan-trajanje').value.trim(),
+    podijeljen_u_grupe:document.getElementById('plan-grupe').value,
+    eu_fondovi:document.getElementById('plan-eu').value,
+    tehnika_okvirni_sporazum:document.getElementById('plan-tehnika').value.trim(),
+    provodi_drugi_narucitelj:document.getElementById('plan-drugi').value.trim(),
+    napomena:document.getElementById('plan-nap').value.trim(),
+    updated_at:new Date().toISOString()
+  };
+  try{
+    if(window._planEdit){
+      await SB.from('plan_nabave').update(payload).eq('id',window._planEdit);
+    } else {
+      payload.created_by=SB_USER?.id;
+      await SB.from('plan_nabave').insert(payload);
+    }
+    closeM('mo-plan-nabave');
+    showToast('✅ Stavka plana spremljena!','success');
+    loadPlanNabave();
+  }catch(e){ document.getElementById('plan-al').innerHTML=`<div class="al ald">Greška: ${e.message}</div>`; }
+}
+
+async function delPlanStavka(id,naziv){
+  if(!confirm(`Obrisati stavku plana "${naziv}"?`)) return;
+  await SB.from('plan_nabave').delete().eq('id',id);
+  showToast('✅ Obrisano','success');
+  loadPlanNabave();
+}
+
+async function pregledPlanRealizacija(id){
+  const {data:s}=await SB.from('plan_nabave').select('*').eq('id',id).single();
+  if(!s) return;
+  const {data:nar}=await SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_bez_pdv,status').eq('plan_stavka_id',id).order('id',{ascending:false});
+  document.getElementById('plan-pregled-title').textContent=s.predmet_nabave;
+  const realizirano=(nar||[]).filter(n=>['odobrena','poslana'].includes(n.status)).reduce((a,n)=>a+(n.ukupno_bez_pdv||0),0);
+  const pct=s.procijenjena_vrijednost>0?Math.round(realizirano/s.procijenjena_vrijednost*100):0;
+  document.getElementById('plan-pregled-content').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:12px;color:var(--text2)">
+      <div>Evidencijski broj: <strong style="color:var(--text1)">${s.evidencijski_broj||'–'}</strong></div>
+      <div>Zakonski okvir: <strong style="color:var(--text1)">${s.zakonski_okvir||'–'}</strong></div>
+      <div>CPV: <strong style="color:var(--text1)">${s.cpv||'–'}</strong></div>
+      <div>Vrsta postupka: <strong style="color:var(--text1)">${s.vrsta_postupka||'–'}</strong></div>
+      <div>Planirani početak: <strong style="color:var(--text1)">${s.planirani_pocetak||'–'}</strong></div>
+      <div>Trajanje: <strong style="color:var(--text1)">${s.planirano_trajanje||'–'}</strong></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:16px">
+      <div><div style="font-size:11px;color:var(--text2)">Procijenjeno</div><div style="font-weight:700">${(s.procijenjena_vrijednost||0).toLocaleString('hr-HR')} €</div></div>
+      <div><div style="font-size:11px;color:var(--text2)">Realizirano</div><div style="font-weight:700">${realizirano.toLocaleString('hr-HR')} €</div></div>
+      <div><div style="font-size:11px;color:var(--text2)">% realizacije</div><div style="font-weight:700">${pct}%</div></div>
+    </div>
+    <div style="font-weight:600;margin-bottom:8px">Povezane narudžbenice</div>
+    ${(nar&&nar.length)?`<div class="tw"><table><thead><tr><th>Broj</th><th>Datum</th><th>Dobavljač</th><th>Iznos (bez PDV)</th><th>Status</th></tr></thead><tbody>
+      ${nar.map(n=>{const st=NAR_STATUS[n.status]||{lbl:n.status,cls:'bdg bgy'};
+        return `<tr><td><strong>${n.broj}</strong></td><td>${n.datum}</td><td>${n.dobavljac_naziv||''}</td><td>${(n.ukupno_bez_pdv||0).toLocaleString('hr-HR')} €</td><td><span class="${st.cls}">${st.lbl}</span></td></tr>`;
+      }).join('')}
+    </tbody></table></div>`:'<div class="empty"><p>Još nema povezanih narudžbenica.</p></div>'}
+  `;
+  openM('mo-plan-pregled');
+}
+
 </script>
 </body>
 </html>
