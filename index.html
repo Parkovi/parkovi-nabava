@@ -4582,7 +4582,7 @@ async function saveZahtjevnica(status){
   const zatrazio=document.getElementById('zah-zatrazio').value.trim();
   const nap=document.getElementById('zah-nap').value.trim();
   const stavke=(window._zahStavke||[]).filter(s=>s.naziv.trim());
-  const god=new Date().getFullYear();
+  const god=datum?parseInt(datum.split('-')[0]):new Date().getFullYear();
 
   if(!datum||!mjesto){document.getElementById('zah-al').innerHTML='<div class="al ald">Datum i mjesto troška su obavezni!</div>';return;}
   if(!stavke.length){document.getElementById('zah-al').innerHTML='<div class="al ald">Unesite barem jednu stavku!</div>';return;}
@@ -4773,6 +4773,21 @@ async function loadNarudzbenice(){
   }catch(e){el.innerHTML=`<div class="al ald">Greška: ${e.message}</div>`;}
 }
 
+async function osvjeziNarPlanDropdown(){
+  const datumVal=document.getElementById('nar-datum').value;
+  const planGod=datumVal?parseInt(datumVal.split('-')[0]):new Date().getFullYear();
+  const trenutnaVrijednost=document.getElementById('nar-plan').value;
+  const {data:planVerz}=await SB.from('plan_nabave_verzije').select('verzija').eq('godina',planGod).order('verzija',{ascending:false}).limit(1);
+  const najnovijaVerz=planVerz?.[0]?.verzija;
+  let planStavke=[];
+  if(najnovijaVerz){
+    const {data}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',planGod).eq('verzija',najnovijaVerz).order('redni_broj');
+    planStavke=data||[];
+  }
+  document.getElementById('nar-plan').innerHTML='<option value="">– bez veze –</option>'+planStavke.map(p=>`<option value="${p.id}">${p.predmet_nabave}</option>`).join('');
+  if(trenutnaVrijednost && planStavke.some(p=>String(p.id)===trenutnaVrijednost)) document.getElementById('nar-plan').value=trenutnaVrijednost;
+}
+
 async function openNovaNarudzbenica(zahId){
   window._narEdit=null;
   const god=new Date().getFullYear();
@@ -4802,16 +4817,9 @@ async function openNovaNarudzbenica(zahId){
   const {data:zahs}=await SB.from('zahtjevnice').select('id,broj,mjesto_troska').in('status',['kod_nabave','u_obradi']).order('id',{ascending:false});
   document.getElementById('nar-zah').innerHTML='<option value="">– bez veze –</option>'+(zahs||[]).map(z=>`<option value="${z.id}" ${z.id===zahId?'selected':''}>${z.broj} – ${z.mjesto_troska||''}</option>`).join('');
 
-  // Load plan nabave (tekuća godina, samo najnovija verzija)
-  const planGod=new Date().getFullYear();
-  const {data:planVerz}=await SB.from('plan_nabave_verzije').select('verzija').eq('godina',planGod).order('verzija',{ascending:false}).limit(1);
-  const najnovijaVerz=planVerz?.[0]?.verzija;
-  let planStavke=[];
-  if(najnovijaVerz){
-    const {data}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',planGod).eq('verzija',najnovijaVerz).order('redni_broj');
-    planStavke=data||[];
-  }
-  document.getElementById('nar-plan').innerHTML='<option value="">– bez veze –</option>'+planStavke.map(p=>`<option value="${p.id}">${p.predmet_nabave}</option>`).join('');
+  // Plan nabave se učitava prema godini iz polja datum, i osvježava ako se datum promijeni
+  await osvjeziNarPlanDropdown();
+  document.getElementById('nar-datum').onchange=osvjeziNarPlanDropdown;
 
   // If linked to zahtjevnica, prefill stavke + prenesi eventualnu ponudu
   if(zahId){
@@ -4931,7 +4939,7 @@ async function saveNarudzbenica(status){
   const otprema=document.getElementById('nar-otprema').value.trim();
   const nap=document.getElementById('nar-nap').value.trim();
   const stavke=(window._narStavke||[]).filter(s=>s.naziv.trim());
-  const god=new Date().getFullYear();
+  const god=datum?parseInt(datum.split('-')[0]):new Date().getFullYear();
 
   if(!datum){document.getElementById('nar-al').innerHTML='<div class="al ald">Datum je obavezan!</div>';return;}
   if(!dobNaziv){document.getElementById('nar-al').innerHTML='<div class="al ald">Unesite naziv dobavljača!</div>';return;}
@@ -5171,6 +5179,7 @@ async function editNarudzbenica(id){
   document.getElementById('nar-mjesto').value=n.mjesto_isporuke||'';
   document.getElementById('nar-otprema').value=n.nacin_otpreme||'Po dogovoru';
   document.getElementById('nar-nap').value=n.napomene||'';
+  await osvjeziNarPlanDropdown();
   if(n.plan_stavka_id) document.getElementById('nar-plan').value=n.plan_stavka_id;
   window._narStavke=(stavke||[]).map(s=>({naziv:s.naziv,jed_mjere:s.jed_mjere||'kom',kolicina:s.kolicina||1,cijena:s.cijena_bez_pdv||0,pdv:s.pdv_stopa||25}));
   renderNarStavke();
