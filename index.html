@@ -319,6 +319,10 @@ select{cursor:pointer}
     <div class="sb">
       <div class="sg">
         <div class="sgl">Nabava</div>
+        <div style="padding:0 12px 10px">
+          <select id="global-godina-select" onchange="postaviGlobalnuGodinu(this.value)" style="width:100%;font-weight:700;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:#fff">
+          </select>
+        </div>
         <div class="ni active" onclick="sP('dashboard')" id="nav-dashboard"><i class="ti ti-layout-dashboard"></i> Pregled</div>
         <div class="ni" onclick="sP('zahtjevnice')" id="nav-zahtjevnice"><i class="ti ti-file-description"></i> Zahtjevnice</div>
         <div class="ni" onclick="sP('narudzbenice')" id="nav-narudzbenice"><i class="ti ti-shopping-cart"></i> Narudžbenice</div>
@@ -700,9 +704,6 @@ select{cursor:pointer}
             <div class="fg" style="min-width:200px;margin:0"><label class="fl">Jedinica</label>
               <select id="zah-fj"><option value="">Sve jedinice</option></select>
             </div>
-            <div class="fg" style="min-width:90px;margin:0"><label class="fl">Godina</label>
-              <select id="zah-fg"><option value="2026">2026</option><option value="2025">2025</option></select>
-            </div>
             <button class="btn bp" onclick="loadZahtjevnice()" style="margin-bottom:1px"><i class="ti ti-search"></i> Pretraži</button>
           </div>
         </div>
@@ -727,9 +728,6 @@ select{cursor:pointer}
                 <option value="poslana">Poslana dobavljaču</option>
                 <option value="realizirana">Realizirana</option>
               </select>
-            </div>
-            <div class="fg" style="min-width:90px;margin:0"><label class="fl">Godina</label>
-              <select id="nar-fg"><option value="2026">2026</option><option value="2025">2025</option></select>
             </div>
             <button class="btn bp" onclick="loadNarudzbenice()" style="margin-bottom:1px"><i class="ti ti-search"></i> Pretraži</button>
           </div>
@@ -761,7 +759,6 @@ select{cursor:pointer}
         </div>
         <div class="card" style="padding:1rem;margin-bottom:1rem">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <div class="fg" style="margin:0"><label class="fl">Godina</label><select id="plan-fg" onchange="onPlanGodinaChange()"></select></div>
             <div class="fg" style="margin:0"><label class="fl">Verzija</label><select id="plan-fv" onchange="loadPlanNabave()"></select></div>
             <div class="fg" style="margin:0"><label class="fl">Status</label><select id="plan-fs" onchange="loadPlanNabave()"><option value="">Svi</option><option value="planirano">Planirano</option><option value="u_realizaciji">U realizaciji</option><option value="realizirano">Realizirano</option><option value="otkazano">Otkazano</option></select></div>
           </div>
@@ -1748,6 +1745,31 @@ function doLoginLocal(){
 }
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("ls").style.display!=="none")doLogin();});
 function doLogout(){if(isLive()){doLogoutSB();return;}CU=null;DB.evidencija={};document.getElementById("app").style.display="none";document.getElementById("ls").style.display="flex";document.getElementById("lal").innerHTML="";}
+
+// ══ GLOBALNA AKTIVNA GODINA (Nabava) ═══════════════════════════
+window.AKTIVNA_GODINA = parseInt(localStorage.getItem('aktivna_godina')) || new Date().getFullYear();
+
+function popuniGlobalnuGodinu(){
+  const trenutna=new Date().getFullYear();
+  const opcije=new Set([trenutna-1,trenutna,trenutna+1,window.AKTIVNA_GODINA]);
+  const sortirane=[...opcije].sort((a,b)=>b-a);
+  const sel=document.getElementById('global-godina-select');
+  sel.innerHTML=sortirane.map(g=>`<option value="${g}">${g}.</option>`).join('');
+  sel.value=window.AKTIVNA_GODINA;
+}
+
+function postaviGlobalnuGodinu(g){
+  window.AKTIVNA_GODINA=parseInt(g);
+  localStorage.setItem('aktivna_godina',window.AKTIVNA_GODINA);
+  const aktivnaPage=document.querySelector('.page.active')?.id?.replace('page-','');
+  if(aktivnaPage) sP(aktivnaPage);
+}
+
+function zadaniDatumZaAktivnuGodinu(){
+  const stvarnaGod=new Date().getFullYear();
+  if(window.AKTIVNA_GODINA===stvarnaGod) return new Date().toISOString().split('T')[0];
+  return `${window.AKTIVNA_GODINA}-01-01`;
+}
 
 function sP(n){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
@@ -3699,6 +3721,7 @@ async function afterLoginSuccess(){
   document.getElementById('sb-mode-badge').textContent = isLive()?'● Live baza':'● Lokalno';
   document.getElementById('sb-mode-badge').className = 'sb-mode-badge '+(isLive()?'sb-mode-live':'sb-mode-local');
   populateYearSelects();
+  popuniGlobalnuGodinu();
   sP('dashboard');
 }
 
@@ -4461,7 +4484,7 @@ async function loadZahtjevnice(){
   const st=document.getElementById('zah-fst')?.value||'';
   const vr=document.getElementById('zah-fvr')?.value||'';
   const jid=document.getElementById('zah-fj')?.value||'';
-  const god=parseInt(document.getElementById('zah-fg')?.value)||2026;
+  const god=window.AKTIVNA_GODINA;
   const el=document.getElementById('zah-list');
   if(!el) return;
   el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
@@ -4514,11 +4537,11 @@ async function loadZahtjevnice(){
 
 async function openNovaZahtjevnica(){
   window._zahEdit=null;
-  const god=new Date().getFullYear();
+  const god=window.AKTIVNA_GODINA;
   const broj=await nextZahBroj(god);
   document.getElementById('zah-modal-title').textContent='Nova zahtjevnica';
   document.getElementById('zah-broj').value=broj;
-  document.getElementById('zah-datum').value=new Date().toISOString().split('T')[0];
+  document.getElementById('zah-datum').value=zadaniDatumZaAktivnuGodinu();
   document.getElementById('zah-vrsta').value='roba';
   document.getElementById('zah-mjesto').value='';
   document.getElementById('zah-zatrazio').value='';
@@ -4728,7 +4751,7 @@ async function setupNarudzbenice(){
 
 async function loadNarudzbenice(){
   const st=document.getElementById('nar-fst')?.value||'';
-  const god=parseInt(document.getElementById('nar-fg')?.value)||2026;
+  const god=window.AKTIVNA_GODINA;
   const el=document.getElementById('nar-list');
   if(!el) return;
   el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
@@ -4790,11 +4813,11 @@ async function osvjeziNarPlanDropdown(){
 
 async function openNovaNarudzbenica(zahId){
   window._narEdit=null;
-  const god=new Date().getFullYear();
+  const god=window.AKTIVNA_GODINA;
   const broj=await nextNarBroj(god);
   document.getElementById('nar-modal-title').textContent='Nova narudžbenica';
   document.getElementById('nar-broj').value=broj;
-  document.getElementById('nar-datum').value=new Date().toISOString().split('T')[0];
+  document.getElementById('nar-datum').value=zadaniDatumZaAktivnuGodinu();
   document.getElementById('nar-rok').value='';
   document.getElementById('nar-mjesto').value='';
   document.getElementById('nar-otprema').value='Po dogovoru';
@@ -5406,29 +5429,12 @@ async function setupPlanNabave(){
   if(btn) btn.style.display=canProcessNabava()?'':'none';
   const btnU=document.getElementById('btn-plan-uvoz');
   if(btnU) btnU.style.display=canProcessNabava()?'':'none';
-  await popuniPlanGodine();
-  await onPlanGodinaChange();
-}
-
-async function popuniPlanGodine(){
-  const sel=document.getElementById('plan-fg');
-  const trenutna=new Date().getFullYear();
-  const {data:verzije}=await SB.from('plan_nabave_verzije').select('godina').order('godina',{ascending:false});
-  const godine=new Set((verzije||[]).map(v=>v.godina));
-  godine.add(trenutna); godine.add(trenutna+1); godine.add(trenutna-1);
-  const sortirane=[...godine].sort((a,b)=>b-a);
-  const prev=sel.value;
-  sel.innerHTML=sortirane.map(g=>`<option value="${g}">${g}.</option>`).join('');
-  sel.value=prev&&sortirane.includes(parseInt(prev))?prev:trenutna;
-}
-
-async function onPlanGodinaChange(){
   await popuniPlanVerzije();
   await loadPlanNabave();
 }
 
 async function popuniPlanVerzije(){
-  const god=parseInt(document.getElementById('plan-fg').value);
+  const god=window.AKTIVNA_GODINA;
   const sel=document.getElementById('plan-fv');
   const {data:verzije}=await SB.from('plan_nabave_verzije').select('*').eq('godina',god).order('verzija',{ascending:false});
   if(!verzije||!verzije.length){
@@ -5447,7 +5453,7 @@ function prikaziVerzijaInfo(verzije){
 }
 
 async function loadPlanNabave(){
-  const god=parseInt(document.getElementById('plan-fg').value)||2026;
+  const god=window.AKTIVNA_GODINA;
   const verzSel=document.getElementById('plan-fv').value;
   const st=document.getElementById('plan-fs').value;
   const el=document.getElementById('plan-list');
@@ -5531,7 +5537,7 @@ async function loadPlanNabave(){
 function openNovaPlanStavka(){
   window._planEdit=null;
   document.getElementById('plan-modal-title').textContent='Nova stavka plana';
-  document.getElementById('plan-godina').value=document.getElementById('plan-fg').value||2026;
+  document.getElementById('plan-godina').value=window.AKTIVNA_GODINA;
   document.getElementById('plan-verzija').value=document.getElementById('plan-fv').value||1;
   document.getElementById('plan-rbr').value='';
   document.getElementById('plan-evbr').value='';
@@ -5654,7 +5660,7 @@ async function pregledPlanRealizacija(id){
 
 // ══ UVOZ NOVE VERZIJE PLANA (izmjena/dopuna) ═══════════════════
 function openUvozPlana(){
-  document.getElementById('uvoz-godina').value=document.getElementById('plan-fg').value||2026;
+  document.getElementById('uvoz-godina').value=window.AKTIVNA_GODINA;
   const trenutnaVerz=parseInt(document.getElementById('plan-fv').value)||0;
   document.getElementById('uvoz-verzija').value=trenutnaVerz+1;
   document.getElementById('uvoz-datum').value=new Date().toISOString().split('T')[0];
@@ -5744,9 +5750,8 @@ async function uvezPlanNabave(){
 
     closeM('mo-plan-uvoz');
     showToast(`✅ Uvezeno ${payload.length} stavki (verzija ${verzija})!`,'success');
-    await popuniPlanGodine();
-    document.getElementById('plan-fg').value=godina;
-    await onPlanGodinaChange();
+    if(window.AKTIVNA_GODINA!==godina){ postaviGlobalnuGodinu(godina); }
+    await popuniPlanVerzije();
     document.getElementById('plan-fv').value=verzija;
     await loadPlanNabave();
   }catch(e){
@@ -5760,8 +5765,8 @@ async function openUsporedbaVerzija(){
   const godine=[...new Set((verzije||[]).map(v=>v.godina))];
   const selG=document.getElementById('usp-godina');
   selG.innerHTML=godine.map(g=>`<option value="${g}">${g}.</option>`).join('')||'<option value="">–</option>';
-  if(godine.includes(parseInt(document.getElementById('plan-fg').value))){
-    selG.value=document.getElementById('plan-fg').value;
+  if(godine.includes(window.AKTIVNA_GODINA)){
+    selG.value=window.AKTIVNA_GODINA;
   }
   document.getElementById('usp-rezultat').innerHTML='';
   await popuniUsporedbaVerzije();
