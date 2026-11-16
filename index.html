@@ -5067,9 +5067,10 @@ function printNarudzbenica(){
   d.open();
   d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${window.__NAR_PRINT_TITLE||'Narudžbenica'}</title><style>
     :root{--border:#cfcdc5;--bg3:#eceae4;--text1:#1c1b18;--text2:#58574f;--text3:#77756d;--blue:#1a5fa8}
-    @page{size:A4;margin:14mm 14mm 12mm}
+    @page{size:A4;margin:0}
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:#fff;color:#1c1b18;font-family:Arial,Helvetica,sans-serif;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    html,body{margin:0;background:#fff;color:#1c1b18;font-family:Arial,Helvetica,sans-serif;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{padding:14mm 14mm 12mm}
     table{width:100%;border-collapse:collapse}
     thead th{border-bottom:1.5px solid #333;font-size:11px}
     tr{page-break-inside:avoid}
