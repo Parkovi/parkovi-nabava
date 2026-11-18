@@ -5258,6 +5258,7 @@ async function pregledNarudzbenica(id){
       </div>
     </div>
     ${pt.pravna_napomena?`<div style="margin-top:10px;font-size:10px;color:var(--text3);line-height:1.4">${pt.pravna_napomena}</div>`:''}
+    ${n.odobrio_ime?`<div style="margin-top:8px;font-size:10.5px;font-style:italic;color:var(--text2)">Narudžbenica je izrađena elektroničkim putem i valjana je bez potpisa i pečata.</div>`:''}
     </div></div>
     <div style="margin-top:1rem"><span class="${st.cls}">${st.lbl}</span></div>
     ${(!kodOk)?`<div style="margin-top:.6rem;padding:8px 10px;background:rgba(192,57,43,.12);border-radius:6px;color:#992222"><strong>⚠ Upozorenje:</strong> sadržaj narudžbenice razlikuje se od onog u trenutku odobrenja (kontrolni kod se ne podudara).</div>`:''}
