@@ -3739,7 +3739,7 @@ async function doLoginSB(){
   }
   SB_USER = data.user;
   // Create a fake CU from email until profile loads
-  CU = {id: data.user.id, name: data.user.email, username: data.user.email, role:'korisnik', access:'own', jedinice:[], pjid:1};
+  CU = {id: data.user.id, name: data.user.email, username: data.user.email, role:'korisnik', access:'own', jedinice:[], pjid:null};
   await afterLoginSuccess();
 }
 
