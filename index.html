@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-E</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-F</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -4802,20 +4802,8 @@ async function setupNarudzbenice(){
 async function popuniNarPlanFilter(){
   const sel=document.getElementById('nar-fplan'); if(!sel) return;
   const cur=sel.value;
-  const god=window.AKTIVNA_GODINA;
-  const {data:all}=await SB.from('plan_nabave').select('id,verzija,redni_broj,predmet_nabave').eq('godina',god).order('redni_broj');
-  const rows=all||[];
-  const maxV=rows.reduce((m,r)=>Math.max(m,r.verzija||0),0);
-  const lbl=p=>(p.redni_broj?p.redni_broj+'. ':'')+p.predmet_nabave;
-  window._planMapNar={}; rows.forEach(p=>window._planMapNar[p.id]=lbl(p));
-  // stavke svih verzija s istim predmetom smatramo istom stavkom plana
-  window._planIstiPredmet={}; 
-  rows.forEach(p=>{const kk=String(p.predmet_nabave||'').trim().toLowerCase().replace(/\s+/g,' ');(window._planIstiPredmet[kk]=window._planIstiPredmet[kk]||[]).push(p.id);});
-  // jedna stavka po predmetu (najnovija verzija / najveći id), čak i ako su podaci u bazi duplicirani
-  const po={};
-  rows.forEach(p=>{const k=String(p.predmet_nabave||'').trim().toLowerCase().replace(/\s+/g,' '); const o=po[k]; if(!o||(p.verzija||0)>(o.verzija||0)||((p.verzija||0)===(o.verzija||0)&&p.id>o.id)) po[k]=p;});
-  const aktivne=Object.values(po).sort((x,y)=>(x.redni_broj||9999)-(y.redni_broj||9999));
-  sel.innerHTML='<option value="">Sve</option><option value="none">— bez veze s planom —</option>'+aktivne.map(p=>`<option value="${p.id}">${lbl(p).slice(0,80)}</option>`).join('');
+  await ucitajPlanMapu();
+  sel.innerHTML='<option value="">Sve</option><option value="none">— bez veze s planom —</option>'+(window._planAktivne||[]).map(p=>`<option value="${p.id}">${p.label.slice(0,80)}</option>`).join('');
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
 function resetNarFilter(){
@@ -4840,13 +4828,24 @@ async function loadNarudzbenice(){
       const naziv=(window._planMapNar&&window._planMapNar[fplan]||'').replace(/^\d+\.\s*/,'');
       let ids=null;
       for(const k in (window._planIstiPredmet||{})){ if(window._planIstiPredmet[k].includes(parseInt(fplan))){ids=window._planIstiPredmet[k];break;} }
-      q=q.in('plan_stavka_id',ids||[parseInt(fplan)]);
+      const pids=ids||[parseInt(fplan)];
+      const ds=await fetchAllRows(()=>SB.from('narudzbenice_stavke').select('id,narudzbenica_id').in('plan_stavka_id',pids).order('id'));
+      const nids=[...new Set(ds.map(x=>x.narudzbenica_id))];
+      q=q.or(`plan_stavka_id.in.(${pids.join(',')})`+(nids.length?`,id.in.(${nids.join(',')})`:''));
     }
     const mojeZ=await nabMojeZahIds();
     if(mojeZ) q=q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]);
     const {data,error}=await q;
     if(error) throw error;
     if(!data||!data.length){el.innerHTML='<div class="empty"><i class="ti ti-shopping-cart"></i><p>Nema narudžbenica</p></div>';return;}
+    const dodStv=await fetchAllRows(()=>SB.from('narudzbenice_stavke').select('id,narudzbenica_id,plan_stavka_id').not('plan_stavka_id','is',null).order('id'));
+    const dodMap={}; dodStv.forEach(x=>{(dodMap[x.narudzbenica_id]=dodMap[x.narudzbenica_id]||new Set()).add(planKey(String((window._planMapNar&&window._planMapNar[x.plan_stavka_id])||'#'+x.plan_stavka_id).replace(/^\d+\.\s*/,'')));});
+    const planLbl=n=>{
+      const names=[]; const seen=new Set();
+      dodStv.filter(x=>x.narudzbenica_id===n.id).forEach(x=>{const t=(window._planMapNar&&window._planMapNar[x.plan_stavka_id])||'#'+x.plan_stavka_id; const k=planKey(String(t).replace(/^\d+\.\s*/,'')); if(!seen.has(k)){seen.add(k);names.push(t);}});
+      if(!names.length) return n.plan_stavka_id?((window._planMapNar&&window._planMapNar[n.plan_stavka_id])||'#'+n.plan_stavka_id):'–';
+      return names.length===1?names[0]:(names[0]+' <span style="color:var(--blue)">+'+(names.length-1)+' više</span>');
+    };
     let html=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:var(--bg3)">
         <th style="padding:8px 10px;text-align:left">Broj</th>
@@ -4864,7 +4863,7 @@ async function loadNarudzbenice(){
         <td style="padding:8px 10px;font-weight:700">${n.broj}</td>
         <td style="padding:8px 10px;text-align:center">${n.datum}</td>
         <td style="padding:8px 10px">${n.dobavljac_naziv||'–'}</td>
-        <td style="padding:8px 10px;font-size:12px;color:var(--text2);max-width:240px">${n.plan_stavka_id?((window._planMapNar&&window._planMapNar[n.plan_stavka_id])||'#'+n.plan_stavka_id):'–'}</td>
+        <td style="padding:8px 10px;font-size:12px;color:var(--text2);max-width:240px">${planLbl(n)}</td>
         <td style="padding:8px 10px;text-align:right">${parseFloat(n.ukupno_bez_pdv||0).toFixed(2)} €</td>
         <td style="padding:8px 10px;text-align:right;font-weight:600">${parseFloat(n.ukupno_s_pdv||0).toFixed(2)} €</td>
         <td style="padding:8px 10px;text-align:center"><span class="${st.cls}">${st.lbl}</span></td>
@@ -4875,6 +4874,7 @@ async function loadNarudzbenice(){
             ${(n.status==='kod_direktora'&&canApprove())?`<button class="btn bsm bp" onclick="odobriNarudzbenicu(${n.id},true)"><i class="ti ti-check"></i> Odobri</button><button class="btn bsm bd" onclick="odobriNarudzbenicu(${n.id},false)"><i class="ti ti-x"></i></button>`:''}
             ${(n.status==='odobrena'&&canApprove())?`<button class="btn bsm bs" onclick="ponistiOdobrenjeNarudzbenice(${n.id})"><i class="ti ti-arrow-back-up"></i> Makni odobrenje</button>`:''}
             ${(n.status==='odobrena'&&canProcessNabava())?`<button class="btn bsm bp" onclick="posaljiNarudzbenicu(${n.id})"><i class="ti ti-send"></i> Pošalji</button>`:''}
+            ${(canProcessNabava()&&['nacrt','kod_direktora','odobrena','poslana','odbijena'].includes(n.status))?`<button class="btn bsm bs" title="Dodijeli stavke plana nabave" onclick="dodijeliPlanDlg(${n.id})"><i class="ti ti-clipboard-list"></i> Plan</button>`:''}
           </div>
         </td>
       </tr>`;
@@ -5101,9 +5101,11 @@ async function saveNarudzbenica(status){
       if(error) throw error;
       narId=data.id;
     }
+    let staraDodjela={};
+    try{const {data:os}=await SB.from('narudzbenice_stavke').select('rbr,plan_stavka_id').eq('narudzbenica_id',narId); (os||[]).forEach(o=>staraDodjela[o.rbr]=o.plan_stavka_id);}catch(e){}
     await SB.from('narudzbenice_stavke').delete().eq('narudzbenica_id',narId);
     await SB.from('narudzbenice_stavke').insert(stavke.map((s,i)=>({
-      narudzbenica_id:narId,rbr:i+1,naziv:s.naziv,jed_mjere:s.jed_mjere||'kom',
+      narudzbenica_id:narId,rbr:i+1,plan_stavka_id:staraDodjela[i+1]||null,naziv:s.naziv,jed_mjere:s.jed_mjere||'kom',
       kolicina:s.kolicina||1,cijena_bez_pdv:s.cijena||0,pdv_stopa:s.pdv||25,
       ukupno_bez_pdv:(s.kolicina||0)*(s.cijena||0),
       ukupno_s_pdv:(s.kolicina||0)*(s.cijena||0)*(1+(s.pdv||25)/100)
@@ -5319,6 +5321,7 @@ async function pregledNarudzbenica(id){
     if(canApprove()) actions+=`<button class="btn bs" onclick="ponistiOdobrenjeNarudzbenice(${id})"><i class="ti ti-arrow-back-up"></i> Makni odobrenje</button>`;
     if(canProcessNabava()) actions+=`<button class="btn bp" onclick="posaljiNarudzbenicu(${id})"><i class="ti ti-send"></i> Pošalji dobavljaču</button>`;
   }
+  if(canProcessNabava()) actions+=`<button class="btn bs" onclick="closeM('mo-pregled-nab');dodijeliPlanDlg(${id})"><i class="ti ti-clipboard-list"></i> Stavke plana</button>`;
   actions+=`<button class="btn bs" onclick="preuzmiNarPdf()"><i class="ti ti-file-download"></i> Preuzmi PDF</button>`;
   actions+=`<button class="btn bs" onclick="printNarudzbenica()"><i class="ti ti-printer"></i> Ispis</button>`;
   document.getElementById('pregled-nab-actions').innerHTML=actions;
@@ -5385,6 +5388,100 @@ async function narKod(n,stavke){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
   const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
   return hex.slice(0,16).replace(/(.{4})/g,'$1-').slice(0,-1);
+}
+
+// ══ DODJELA STAVKI PLANA NABAVE (po stavkama narudžbenice) ═════════
+function planKey(t){return String(t||'').trim().toLowerCase().replace(/\s+/g,' ');}
+async function fetchAllRows(mk){
+  let out=[],from=0;
+  for(;;){
+    const {data,error}=await mk().range(from,from+999);
+    if(error) throw error;
+    out=out.concat(data||[]);
+    if(!data||data.length<1000) break;
+    from+=1000;
+  }
+  return out;
+}
+// Realizacija plana: zbroj po predmetu nabave (spaja sve verzije plana). Stavka narudžbenice ima vlastitu stavku plana,
+// a ostatak (bez dodjele) ide na stavku plana narudžbenice.
+async function ucitajPlanRealizaciju(god){
+  const {data:pl}=await SB.from('plan_nabave').select('id,predmet_nabave').eq('godina',god);
+  const idKey={}; (pl||[]).forEach(p=>idKey[p.id]=planKey(p.predmet_nabave));
+  const nar=await fetchAllRows(()=>SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_bez_pdv,status,plan_stavka_id').eq('godina',god).order('id'));
+  const dod=await fetchAllRows(()=>SB.from('narudzbenice_stavke').select('id,narudzbenica_id,ukupno_bez_pdv,plan_stavka_id').not('plan_stavka_id','is',null).order('id'));
+  const nById={}; nar.forEach(n=>nById[n.id]=n);
+  const per={}; // narudzbenica_id -> {key:iznos}
+  dod.forEach(l=>{
+    const n=nById[l.narudzbenica_id]; if(!n) return;
+    const k=idKey[l.plan_stavka_id]; if(!k) return;
+    per[n.id]=per[n.id]||{}; per[n.id][k]=(per[n.id][k]||0)+(parseFloat(l.ukupno_bez_pdv)||0);
+    per[n.id]._as=(per[n.id]._as||0)+(parseFloat(l.ukupno_bez_pdv)||0);
+  });
+  const sum={}, det={};
+  nar.forEach(n=>{
+    const p=per[n.id]||{};
+    const ostatak=Math.max(0,(parseFloat(n.ukupno_bez_pdv)||0)-(p._as||0));
+    const dijelovi={};
+    Object.keys(p).forEach(k=>{if(k!=='_as') dijelovi[k]=p[k];});
+    if(n.plan_stavka_id && idKey[n.plan_stavka_id] && ostatak>0.004){const k=idKey[n.plan_stavka_id]; dijelovi[k]=(dijelovi[k]||0)+ostatak;}
+    Object.keys(dijelovi).forEach(k=>{
+      (det[k]=det[k]||[]).push({id:n.id,broj:n.broj,datum:n.datum,dobavljac_naziv:n.dobavljac_naziv,ukupno_bez_pdv:dijelovi[k],status:n.status});
+      if(['odobrena','poslana'].includes(n.status)) sum[k]=(sum[k]||0)+dijelovi[k];
+    });
+  });
+  return {sum,det};
+}
+async function ucitajPlanMapu(){
+  const god=window.AKTIVNA_GODINA;
+  const {data:all}=await SB.from('plan_nabave').select('id,verzija,redni_broj,predmet_nabave').eq('godina',god).order('redni_broj');
+  const rows=all||[];
+  const lbl=p=>(p.redni_broj?p.redni_broj+'. ':'')+p.predmet_nabave;
+  window._planMapNar={}; rows.forEach(p=>window._planMapNar[p.id]=lbl(p));
+  window._planIstiPredmet={};
+  rows.forEach(p=>{const kk=planKey(p.predmet_nabave);(window._planIstiPredmet[kk]=window._planIstiPredmet[kk]||[]).push(p.id);});
+  const po={};
+  rows.forEach(p=>{const k=planKey(p.predmet_nabave); const o=po[k]; if(!o||(p.verzija||0)>(o.verzija||0)||((p.verzija||0)===(o.verzija||0)&&p.id>o.id)) po[k]=p;});
+  window._planAktivne=Object.values(po).sort((x,y)=>(x.redni_broj||9999)-(y.redni_broj||9999)).map(p=>({id:p.id,label:lbl(p)}));
+}
+async function dodijeliPlanDlg(id){
+  if(!canProcessNabava()){showToast('Samo nabava može dodjeljivati stavke plana.','error');return;}
+  await ucitajPlanMapu();
+  const {data:n}=await SB.from('narudzbenice').select('id,broj,plan_stavka_id').eq('id',id).single();
+  const {data:stv}=await SB.from('narudzbenice_stavke').select('id,rbr,naziv,ukupno_bez_pdv,plan_stavka_id').eq('narudzbenica_id',id).order('rbr');
+  const lista=stv||[];
+  const opts=sel=>'<option value="">— bez dodjele (stavka plana narudžbenice) —</option>'+(window._planAktivne||[]).map(p=>`<option value="${p.id}" ${String(sel||'')===String(p.id)?'selected':''}>${p.label.slice(0,90)}</option>`).join('');
+  // trenutne dodjele mapiraj na aktivnu verziju (isti predmet)
+  const naAktivnu=pid=>{ if(!pid) return ''; const k=Object.keys(window._planIstiPredmet||{}).find(k=>window._planIstiPredmet[k].includes(pid)); if(!k) return ''; const a=(window._planAktivne||[]).find(p=>planKey(String(window._planMapNar[p.id]).replace(/^\d+\.\s*/,''))===k); return a?a.id:''; };
+  const old=document.getElementById('plan-dod-dlg'); if(old) old.remove();
+  const dlg=document.createElement('div'); dlg.id='plan-dod-dlg';
+  dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+  dlg.innerHTML=`<div style="background:#fff;border-radius:10px;max-width:820px;width:100%;max-height:90vh;overflow:auto;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13.5px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">Stavke plana nabave — narudžbenica ${n.broj}</div>
+    <div style="color:var(--text2);margin-bottom:12px">Svaku stavku narudžbenice možeš dodijeliti drugoj stavci plana. Moguće i nakon odobrenja i slanja.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:10px;background:var(--bg3);border-radius:8px;flex-wrap:wrap">
+      <strong>Sve stavke:</strong>
+      <select id="pd-sve" style="flex:1;min-width:260px">${opts(naAktivnu(n.plan_stavka_id))}</select>
+      <button class="btn bs" id="pd-primijeni">Primijeni na sve</button>
+    </div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--bg3)"><th style="padding:6px 8px;text-align:left">Rb.</th><th style="padding:6px 8px;text-align:left">Stavka narudžbenice</th><th style="padding:6px 8px;text-align:right">Iznos bez PDV</th><th style="padding:6px 8px;text-align:left">Stavka plana</th></tr></thead><tbody>
+    ${lista.map(l=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">${l.rbr}</td><td style="padding:6px 8px">${l.naziv||''}</td><td style="padding:6px 8px;text-align:right">${(parseFloat(l.ukupno_bez_pdv)||0).toFixed(2)} €</td><td style="padding:6px 8px"><select class="pd-row" data-id="${l.id}" style="width:100%;min-width:240px">${opts(naAktivnu(l.plan_stavka_id||n.plan_stavka_id))}</select></td></tr>`).join('')||'<tr><td colspan="4" style="padding:10px;color:var(--text2)">Narudžbenica nema stavki.</td></tr>'}
+    </tbody></table>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn bs" id="pd-zatvori">Odustani</button><button class="btn bp" id="pd-spremi">Spremi</button></div></div>`;
+  document.body.appendChild(dlg);
+  document.getElementById('pd-zatvori').onclick=()=>dlg.remove();
+  document.getElementById('pd-primijeni').onclick=()=>{const v=document.getElementById('pd-sve').value; dlg.querySelectorAll('.pd-row').forEach(e=>e.value=v);};
+  document.getElementById('pd-spremi').onclick=async()=>{
+    try{
+      const vr=[...dlg.querySelectorAll('.pd-row')].map(e=>({id:parseInt(e.dataset.id),plan:e.value?parseInt(e.value):null}));
+      for(const r of vr){ await SB.from('narudzbenice_stavke').update({plan_stavka_id:r.plan}).eq('id',r.id); }
+      const jedinstv=[...new Set(vr.map(r=>r.plan))];
+      await SB.from('narudzbenice').update({plan_stavka_id:(jedinstv.length===1?jedinstv[0]:(n.plan_stavka_id||null))}).eq('id',id);
+      await logN('narudzbenica',id,n.broj,'Dodijeljene stavke plana nabave',jedinstv.length===1&&jedinstv[0]?'Sve stavke: '+(window._planMapNar[jedinstv[0]]||jedinstv[0]):('Podijeljeno na '+jedinstv.filter(x=>x).length+' stavki plana'));
+      dlg.remove(); showToast('✅ Stavke plana dodijeljene','success');
+      closeM('mo-pregled-nab'); loadNarudzbenice();
+    }catch(e){showToast('Greška: '+e.message+' (pokrenuo si SQL narudzbenice_plan_stavke.sql?)','error');}
+  };
 }
 
 function narClean(t){return String(t||'').replace(/\s*\[ODBIJENO:[^\]]*\]/g,'').trim();}
@@ -5741,16 +5838,10 @@ async function loadPlanNabave(){
     const {data:stavke,error}=await q;
     if(error) throw error;
 
-    // Dohvati sve narudžbenice povezane s planom za ovu godinu (za izračun realizacije)
-    const ids=(stavke||[]).map(s=>s.id);
+    // Realizacija po predmetu nabave (zbroj svih verzija; uzima u obzir dodjelu po stavkama narudžbenice)
     let realizacija={};
-    if(ids.length){
-      const {data:nar}=await SB.from('narudzbenice').select('plan_stavka_id,ukupno_bez_pdv,status').in('plan_stavka_id',ids);
-      (nar||[]).forEach(n=>{
-        if(!['odobrena','poslana'].includes(n.status)) return;
-        realizacija[n.plan_stavka_id]=(realizacija[n.plan_stavka_id]||0)+(n.ukupno_bez_pdv||0);
-      });
-    }
+    const RZ=await ucitajPlanRealizaciju(god);
+    (stavke||[]).forEach(s=>{realizacija[s.id]=RZ.sum[planKey(s.predmet_nabave)]||0;});
 
     let filtered=(stavke||[]).map(s=>{
       const realiz=realizacija[s.id]||0;
@@ -5906,7 +5997,8 @@ async function delPlanStavka(id,naziv){
 async function pregledPlanRealizacija(id){
   const {data:s}=await SB.from('plan_nabave').select('*').eq('id',id).single();
   if(!s) return;
-  const {data:nar}=await SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_bez_pdv,status').eq('plan_stavka_id',id).order('id',{ascending:false});
+  const RZ2=await ucitajPlanRealizaciju(s.godina);
+  const nar=(RZ2.det[planKey(s.predmet_nabave)]||[]).slice().sort((x,y)=>y.id-x.id);
   document.getElementById('plan-pregled-title').textContent=s.predmet_nabave;
   const realizirano=(nar||[]).filter(n=>['odobrena','poslana'].includes(n.status)).reduce((a,n)=>a+(n.ukupno_bez_pdv||0),0);
   const pct=s.procijenjena_vrijednost>0?Math.round(realizirano/s.procijenjena_vrijednost*100):0;
