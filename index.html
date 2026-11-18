@@ -744,7 +744,10 @@ select{cursor:pointer}
                 <option value="realizirana">Realizirana</option>
               </select>
             </div>
+            <div class="fg" style="min-width:200px;margin:0"><label class="fl">Dobavljač / broj</label><input type="text" id="nar-fq" placeholder="npr. Invent ili 0012" onkeyup="if(event.key==='Enter')loadNarudzbenice()"></div>
+            <div class="fg" style="min-width:260px;margin:0"><label class="fl">Stavka plana nabave</label><select id="nar-fplan"><option value="">Sve</option></select></div>
             <button class="btn bp" onclick="loadNarudzbenice()" style="margin-bottom:1px"><i class="ti ti-search"></i> Pretraži</button>
+            <button class="btn bs" onclick="resetNarFilter()" style="margin-bottom:1px">Očisti</button>
           </div>
         </div>
         <div class="card"><div id="nar-list"><div class="empty"><i class="ti ti-shopping-cart"></i><p>Klikni Pretraži</p></div></div></div>
@@ -4793,7 +4796,20 @@ async function napraviNarudzbenicu(zahId){
 async function setupNarudzbenice(){
   const btn=document.getElementById('btn-nova-nar');
   if(btn) btn.style.display=canProcessNabava()?'':'none';
+  await popuniNarPlanFilter();
   await loadNarudzbenice();
+}
+async function popuniNarPlanFilter(){
+  const sel=document.getElementById('nar-fplan'); if(!sel) return;
+  const cur=sel.value;
+  const {data}=await SB.from('plan_nabave').select('id,redni_broj,predmet_nabave').eq('godina',window.AKTIVNA_GODINA).order('redni_broj');
+  window._planMapNar={}; (data||[]).forEach(p=>window._planMapNar[p.id]=(p.redni_broj?p.redni_broj+'. ':'')+p.predmet_nabave);
+  sel.innerHTML='<option value="">Sve</option><option value="none">— bez veze s planom —</option>'+(data||[]).map(p=>`<option value="${p.id}">${(p.redni_broj?p.redni_broj+'. ':'')+String(p.predmet_nabave).slice(0,70)}</option>`).join('');
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+function resetNarFilter(){
+  ['nar-fst','nar-fq','nar-fplan'].forEach(i=>{const e=document.getElementById(i); if(e) e.value='';});
+  loadNarudzbenice();
 }
 
 async function loadNarudzbenice(){
@@ -4805,6 +4821,10 @@ async function loadNarudzbenice(){
   try{
     let q=SB.from('narudzbenice').select('*').eq('godina',god).order('id',{ascending:false});
     if(st) q=q.eq('status',st);
+    const fq=(document.getElementById('nar-fq')?.value||'').trim().replace(/[,()%]/g,' ');
+    if(fq) q=q.or(`dobavljac_naziv.ilike.%${fq}%,broj.ilike.%${fq}%,dobavljac_oib.ilike.%${fq}%`);
+    const fplan=document.getElementById('nar-fplan')?.value||'';
+    if(fplan==='none') q=q.is('plan_stavka_id',null); else if(fplan) q=q.eq('plan_stavka_id',parseInt(fplan));
     const mojeZ=await nabMojeZahIds();
     if(mojeZ) q=q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]);
     const {data,error}=await q;
@@ -4815,6 +4835,7 @@ async function loadNarudzbenice(){
         <th style="padding:8px 10px;text-align:left">Broj</th>
         <th style="padding:8px 10px">Datum</th>
         <th style="padding:8px 10px;text-align:left">Dobavljač</th>
+        <th style="padding:8px 10px;text-align:left">Stavka plana</th>
         <th style="padding:8px 10px;text-align:right">Bez PDV</th>
         <th style="padding:8px 10px;text-align:right">S PDV</th>
         <th style="padding:8px 10px">Status</th>
@@ -4826,6 +4847,7 @@ async function loadNarudzbenice(){
         <td style="padding:8px 10px;font-weight:700">${n.broj}</td>
         <td style="padding:8px 10px;text-align:center">${n.datum}</td>
         <td style="padding:8px 10px">${n.dobavljac_naziv||'–'}</td>
+        <td style="padding:8px 10px;font-size:12px;color:var(--text2);max-width:240px">${n.plan_stavka_id?((window._planMapNar&&window._planMapNar[n.plan_stavka_id])||'#'+n.plan_stavka_id):'–'}</td>
         <td style="padding:8px 10px;text-align:right">${parseFloat(n.ukupno_bez_pdv||0).toFixed(2)} €</td>
         <td style="padding:8px 10px;text-align:right;font-weight:600">${parseFloat(n.ukupno_s_pdv||0).toFixed(2)} €</td>
         <td style="padding:8px 10px;text-align:center"><span class="${st.cls}">${st.lbl}</span></td>
@@ -4840,7 +4862,8 @@ async function loadNarudzbenice(){
         </td>
       </tr>`;
     });
-    html+='</tbody></table></div>';
+    const sumB=data.reduce((a,n)=>a+parseFloat(n.ukupno_bez_pdv||0),0), sumS=data.reduce((a,n)=>a+parseFloat(n.ukupno_s_pdv||0),0);
+    html+=`</tbody><tfoot><tr style="background:var(--bg3);font-weight:700"><td colspan="4" style="padding:8px 10px">Ukupno: ${data.length} narudžbenica</td><td style="padding:8px 10px;text-align:right">${sumB.toFixed(2)} €</td><td style="padding:8px 10px;text-align:right">${sumS.toFixed(2)} €</td><td colspan="2"></td></tr></tfoot></table></div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="al ald">Greška: ${e.message}</div>`;}
 }
