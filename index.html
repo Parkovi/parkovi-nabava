@@ -334,6 +334,7 @@ select{cursor:pointer}
         <div class="sgl">Administracija</div>
         <div class="ni" onclick="sP('korisnici')" id="nav-korisnici"><i class="ti ti-shield-lock"></i> Korisnici i ovlasti</div>
         <div class="ni" onclick="sP('postavke-tvrtke')" id="nav-postavke-tvrtke"><i class="ti ti-building"></i> Postavke tvrtke</div>
+        <div class="ni" onclick="sP('dnevnik-nabave')" id="nav-dnevnik-nabave"><i class="ti ti-history"></i> Dnevnik promjena</div>
       </div>
     </div>
     <div class="mn">
@@ -413,6 +414,18 @@ select{cursor:pointer}
         <div class="ph"><div><div class="pt">Korisnici i ovlasti</div><div class="ps">Upravljanje pristupom sustavu</div></div>
         <div class="phr"><button class="btn bp" onclick="openAddUser()"><i class="ti ti-user-plus"></i> Dodaj korisnika</button></div></div>
         <div class="card"><div id="kw"></div></div>
+      </div>
+
+      <div class="page" id="page-dnevnik-nabave">
+        <div class="ph"><div><div class="pt">Dnevnik promjena</div><div class="ps">Evidencija tko je i kada kreirao, mijenjao, poslao, odobrio ili odbio zahtjevnice i narudžbenice (za reviziju)</div></div></div>
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+            <div class="fg" style="margin:0"><label class="fl">Vrsta</label><select id="dn-tip" onchange="loadDnevnikNabave()"><option value="">Sve</option><option value="zahtjevnica">Zahtjevnice</option><option value="narudzbenica">Narudžbenice</option></select></div>
+            <div class="fg" style="margin:0"><label class="fl">Broj dokumenta</label><input type="text" id="dn-broj" placeholder="npr. 0012-2026" onkeyup="if(event.key==='Enter')loadDnevnikNabave()"></div>
+            <button class="btn bp" onclick="loadDnevnikNabave()">Pretraži</button>
+          </div>
+          <div id="dn-out"></div>
+        </div>
       </div>
 
       <div class="page" id="page-postavke-tvrtke">
@@ -1780,7 +1793,7 @@ function sP(n){
   document.querySelectorAll(".ni").forEach(x=>x.classList.remove("active"));
   document.getElementById("page-"+n)?.classList.add("active");
   document.getElementById("nav-"+n)?.classList.add("active");
-  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'plan-nabave':setupPlanNabave})[n]?.();
+  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
 }
 
 function vJ(){
@@ -4650,6 +4663,7 @@ async function saveZahtjevnica(status){
       zahtjevnica_id:zahId,rbr:i+1,svrha_utroska:s.svrha,naziv:s.naziv,
       jed_mjere:s.jed_mjere||'kom',kolicina_trazena:parseFloat(s.kolicina)||1
     })));
+    await logN('zahtjevnica',zahId,broj,status==='kod_nabave'?(window._zahEdit?'Ponovno poslana nabavi':'Poslana nabavi'):(window._zahEdit?'Izmijenjena':'Kreirana'));
     closeM('mo-zahtjevnica');
     if(ponudaUploadFailed){
       showToast('⚠️ Zahtjevnica spremljena, ali upload ponude NIJE uspio','error');
@@ -4731,10 +4745,12 @@ async function odobriZahtjevnicu(id,odobri){
     const razlog=prompt('Razlog odbijanja:');
     if(razlog===null) return;
     await SB.from('zahtjevnice').update({status:'odbijena',napomena:razlog,updated_at:new Date().toISOString()}).eq('id',id);
+    await logN('zahtjevnica',id,await brojDok('zahtjevnice',id),'Odbijena',razlog);
     showToast('Zahtjevnica odbijena','info');
   } else {
     const ime=CU?.name||'Administrator';
     await SB.from('zahtjevnice').update({status:'odobrena',odobrio_ime:ime,datum_odobrenja:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
+    await logN('zahtjevnica',id,await brojDok('zahtjevnice',id),'Odobrena');
     showToast('✅ Zahtjevnica odobrena!','success');
   }
   closeM('mo-pregled-nab');
@@ -5052,6 +5068,7 @@ async function saveNarudzbenica(status){
     if(zahId){
       await syncZahStatus(zahId,status);
     }
+    await logN('narudzbenica',narId,broj,status==='kod_direktora'?(window._narEdit?'Ponovno poslana direktoru':'Poslana direktoru'):(window._narEdit?'Izmijenjena':'Kreirana'),'Iznos s PDV: '+parseFloat(t.totSpdv||0).toFixed(2)+' €');
 
     closeM('mo-narudzbenica');
     if(ponudaUploadFailed){
@@ -5096,6 +5113,8 @@ async function pregledNarudzbenica(id){
   if(!n) return;
   let zahVeza=null;
   if(n.zahtjevnica_id){const {data:zz}=await SB.from('zahtjevnice').select('broj,broj_ponude,datum').eq('id',n.zahtjevnica_id).single(); zahVeza=zz||null;}
+  let kodStored=n.kontrolni_kod||'', kodOk=true;
+  if(kodStored){try{kodOk=(await narKod(n,stavke))===kodStored;}catch(e){}}
   const zahBr=n.ref_zahtjevnica||zahVeza?.broj||'';
   const ponBr=n.ref_ponuda||zahVeza?.broj_ponude||'';
   const pt=window.POSTAVKE_TVRTKE||await loadPostavkeTvrtkeGlobal()||{};
@@ -5173,6 +5192,11 @@ async function pregledNarudzbenica(id){
     </div>
 
     ${narClean(n.napomene)?`<div style="margin-bottom:1rem"><strong>Napomene:</strong><br>${narClean(n.napomene)}</div>`:''}
+    ${n.odobrio_ime?`<div style="margin-top:14px;padding:8px 10px;border:1px solid #00b38a;border-radius:6px;font-size:11.5px;line-height:1.5">
+      <strong>Elektronički odobreno:</strong> ${n.odobrio_ime}, ${n.datum_odobrenja?new Date(n.datum_odobrenja).toLocaleString('hr-HR'):''}
+      ${kodStored?`<br><span style="color:var(--text2)">Kontrolni kod dokumenta: <strong style="font-family:monospace">${kodStored}</strong></span>`:''}
+    </div>`:''}
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center;padding-top:24px;margin-top:8px">
       <div>
         <div style="font-size:12px;font-weight:600">Odgovorna osoba</div>
@@ -5208,11 +5232,11 @@ async function pregledNarudzbenica(id){
     ${pt.pravna_napomena?`<div style="margin-top:10px;font-size:10px;color:var(--text3);line-height:1.4">${pt.pravna_napomena}</div>`:''}
     </div></div>
     <div style="margin-top:1rem"><span class="${st.cls}">${st.lbl}</span></div>
+    ${(!kodOk)?`<div style="margin-top:.6rem;padding:8px 10px;background:rgba(192,57,43,.12);border-radius:6px;color:#992222"><strong>⚠ Upozorenje:</strong> sadržaj narudžbenice razlikuje se od onog u trenutku odobrenja (kontrolni kod se ne podudara).</div>`:''}
     ${(n.status==='odbijena'&&narRazlog(n.napomene))?`<div style="margin-top:.6rem;padding:8px 10px;background:rgba(192,57,43,.08);border-radius:6px;color:#992222"><strong>Razlog odbijanja:</strong> ${narRazlog(n.napomene)}</div>`:''}
     ${(ponude&&ponude.length)?`<div style="margin-top:.8rem;display:flex;flex-direction:column;gap:6px">
       ${ponude.map(p=>`<a href="${p.url}" target="_blank" class="btn bs" style="display:inline-flex;align-items:center;gap:6px;width:fit-content"><i class="ti ti-file-download"></i> ${p.naziv||'Ponuda'}</a>`).join('')}
     </div>`:''}
-    ${n.odobrio_ime?`<div style="padding:8px;background:rgba(34,134,58,.08);border-radius:6px;margin-top:.8rem"><strong>Odobrio:</strong> ${n.odobrio_ime} &nbsp;|&nbsp; ${n.datum_odobrenja?.split('T')[0]||''}</div>`:''}
 
   `;
 
@@ -5261,6 +5285,38 @@ async function editNarudzbenica(id){
   renderNarPonude();
 }
 
+// ══ DNEVNIK PROMJENA (revizijski trag) ═══════════════════════════
+async function logN(tip,id,broj,akcija,detalji){
+  try{
+    await SB.from('nabava_dnevnik').insert({korisnik:CU?.name||SB_USER?.email||'?',korisnik_email:SB_USER?.email||null,tip,dok_id:id||null,dok_broj:broj||null,akcija,detalji:detalji||null});
+  }catch(e){console.warn('Dnevnik:',e);}
+}
+async function brojDok(tab,id){
+  try{const {data}=await SB.from(tab).select('broj').eq('id',id).single();return data?.broj||'';}catch(e){return '';}
+}
+async function loadDnevnikNabave(){
+  const out=document.getElementById('dn-out'); if(!out) return;
+  out.innerHTML='<div style="color:var(--text2)">Učitavam...</div>';
+  let q=SB.from('nabava_dnevnik').select('*').order('id',{ascending:false}).limit(500);
+  const tip=document.getElementById('dn-tip')?.value; if(tip) q=q.eq('tip',tip);
+  const br=document.getElementById('dn-broj')?.value.trim(); if(br) q=q.ilike('dok_broj','%'+br+'%');
+  const {data,error}=await q;
+  if(error){out.innerHTML=`<div class="al ald">Greška: ${error.message}. Pokreni SQL nabava_revizija.sql u Supabaseu.</div>`;return;}
+  if(!data||!data.length){out.innerHTML='<div style="color:var(--text2)">Nema zapisa.</div>';return;}
+  out.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--bg3)">
+    <th style="padding:7px 8px;text-align:left">Vrijeme</th><th style="padding:7px 8px;text-align:left">Korisnik</th><th style="padding:7px 8px;text-align:left">Dokument</th><th style="padding:7px 8px;text-align:left">Radnja</th><th style="padding:7px 8px;text-align:left">Detalji</th></tr></thead><tbody>`+
+    data.map(r=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">${new Date(r.created_at).toLocaleString('hr-HR')}</td><td style="padding:6px 8px">${r.korisnik||''}</td><td style="padding:6px 8px">${r.tip==='zahtjevnica'?'Zahtjevnica':'Narudžbenica'} ${r.dok_broj||''}</td><td style="padding:6px 8px;font-weight:600">${r.akcija}</td><td style="padding:6px 8px;color:var(--text2)">${r.detalji||''}</td></tr>`).join('')+
+    `</tbody></table></div>`;
+}
+// Kontrolni kod odobrene narudžbenice (otisak sadržaja): otkriva izmjene nakon odobrenja
+async function narKod(n,stavke){
+  const t=[n.broj,n.datum,n.dobavljac_oib||'',n.dobavljac_naziv||'',parseFloat(n.ukupno_bez_pdv||0).toFixed(2),parseFloat(n.ukupno_s_pdv||0).toFixed(2),n.odobrio_ime||'',n.datum_odobrenja||'']
+    .concat((stavke||[]).map(s=>[s.rbr,s.naziv,s.jed_mjere,parseFloat(s.kolicina||0),parseFloat(s.cijena_bez_pdv||0).toFixed(2),s.pdv_stopa].join('~'))).join('|');
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+  const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  return hex.slice(0,16).replace(/(.{4})/g,'$1-').slice(0,-1);
+}
+
 function narClean(t){return String(t||'').replace(/\s*\[ODBIJENO:[^\]]*\]/g,'').trim();}
 function narRazlog(t){const m=String(t||'').match(/\[ODBIJENO:\s*([^\]]*)\]/);return m?m[1].trim():'';}
 // Status zahtjevnice prati status njezine narudžbenice
@@ -5279,12 +5335,20 @@ async function odobriNarudzbenicu(id,odobri){
     const novaNap=(narClean(nOld?.napomene)+` [ODBIJENO: ${razlog||'bez navedenog razloga'}]`).trim();
     await SB.from('narudzbenice').update({status:'odbijena',napomene:novaNap,updated_at:new Date().toISOString()}).eq('id',id);
     await syncZahStatus(nOld?.zahtjevnica_id,'odbijena');
+    await logN('narudzbenica',id,await brojDok('narudzbenice',id),'Odbijena',razlog);
     showToast('Narudžbenica odbijena — može se doraditi i ponovno poslati','info');
   } else {
     const ime=CU?.name||'Administrator';
     await SB.from('narudzbenice').update({status:'odobrena',odobrio_ime:ime,datum_odobrenja:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
     const {data:nOk}=await SB.from('narudzbenice').select('zahtjevnica_id').eq('id',id).single();
     await syncZahStatus(nOk?.zahtjevnica_id,'odobrena');
+    try{
+      const {data:nF}=await SB.from('narudzbenice').select('*').eq('id',id).single();
+      const {data:sF}=await SB.from('narudzbenice_stavke').select('*').eq('narudzbenica_id',id).order('rbr');
+      const kod=await narKod(nF,sF);
+      await SB.from('narudzbenice').update({kontrolni_kod:kod}).eq('id',id);
+      await logN('narudzbenica',id,nF.broj,'Odobrena','Kontrolni kod: '+kod);
+    }catch(e){console.warn(e);}
     showToast('✅ Narudžbenica odobrena!','success');
   }
   closeM('mo-pregled-nab');
@@ -5296,6 +5360,8 @@ async function ponistiOdobrenjeNarudzbenice(id){
   await SB.from('narudzbenice').update({status:'kod_direktora',odobrio_ime:null,datum_odobrenja:null,updated_at:new Date().toISOString()}).eq('id',id);
   const {data:nPo}=await SB.from('narudzbenice').select('zahtjevnica_id').eq('id',id).single();
   await syncZahStatus(nPo?.zahtjevnica_id,'kod_direktora');
+  await SB.from('narudzbenice').update({kontrolni_kod:null}).eq('id',id);
+  await logN('narudzbenica',id,await brojDok('narudzbenice',id),'Odobrenje poništeno');
   showToast('Odobrenje poništeno','info');
   closeM('mo-pregled-nab');
   loadNarudzbenice();
@@ -5304,6 +5370,7 @@ async function ponistiOdobrenjeNarudzbenice(id){
 async function posaljiNarudzbenicu(id){
   if(!confirm('Označiti narudžbenicu kao poslanu dobavljaču?')) return;
   await SB.from('narudzbenice').update({status:'poslana',slano_dobavljacu:true,datum_slanja:new Date().toISOString().split('T')[0],updated_at:new Date().toISOString()}).eq('id',id);
+  await logN('narudzbenica',id,await brojDok('narudzbenice',id),'Označena kao poslana dobavljaču');
   showToast('✅ Narudžbenica označena kao poslana!','success');
   closeM('mo-pregled-nab');
   loadNarudzbenice();
