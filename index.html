@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-G</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-H</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -1824,9 +1824,10 @@ function avC(s){const c=[["#dce8f5","#1a5fa8"],["#e8f3df","#2d6b0f"],["#faebd6",
 async function rDash(){
   document.getElementById('dash-actions').innerHTML=canCreateZahtjevnica()?`<button class="btn bp" onclick="sP('zahtjevnice');setTimeout(openNovaZahtjevnica,50)"><i class="ti ti-plus"></i> Nova zahtjevnica</button>`:'';
 
+  const dgod=window.AKTIVNA_GODINA;
   const mojeZ=await nabMojeZahIds();
-  const fz=q=>mojeZ?q.in('id',mojeZ.length?mojeZ:[-1]):q;
-  const fn=q=>mojeZ?q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]):q;
+  const fz=q=>{q=q.eq('godina',dgod);return mojeZ?q.in('id',mojeZ.length?mojeZ:[-1]):q;};
+  const fn=q=>{q=q.eq('godina',dgod);return mojeZ?q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]):q;};
   const {data:zah}=await fz(SB.from('zahtjevnice').select('id,broj,datum,mjesto_troska,zatrazio_ime,status')).order('id',{ascending:false}).limit(8);
   const {data:nar}=await fn(SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_s_pdv,status')).order('id',{ascending:false}).limit(8);
 
