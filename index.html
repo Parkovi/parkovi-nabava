@@ -5397,27 +5397,42 @@ async function ponistiOdobrenjeNarudzbenice(id){
 
 async function posaljiNarudzbenicu(id){
   if(!canProcessNabava()){showToast('Slanje dobavljaču može samo nabava.','error');return;}
-  const gw=window.open('about:blank','_blank'); // otvori odmah (zaštita od blokiranja skočnih prozora)
   const {data:n}=await SB.from('narudzbenice').select('*').eq('id',id).single();
-  if(!n){try{gw&&gw.close();}catch(e){}return;}
+  if(!n) return;
   let email='';
   if(n.dobavljac_id){const {data:d}=await SB.from('dobavljaci').select('email').eq('id',n.dobavljac_id).single(); email=(d?.email||'').trim();}
   const pt=window.POSTAVKE_TVRTKE||await loadPostavkeTvrtkeGlobal()||{};
   const tvrtka=pt.naziv||'Parkovi i nasadi d.o.o.';
   const subject=`Narudžbenica ${n.broj} – ${tvrtka}`;
   const body=`Poštovani,\n\nu privitku vam šaljemo narudžbenicu br. ${n.broj} od ${n.datum}.\nMolimo potvrdu primitka i isporuke.\n\nSrdačan pozdrav,\n${n.sastavio_ime||''}\n${tvrtka}`;
-  const upozorenje=email?'':'\n\nPAŽNJA: za ovog dobavljača nije upisan email (Dobavljači → uredi). Primatelja ćete upisati ručno.';
-  if(!confirm('Otvorit će se Gmail s pripremljenom porukom.\nPDF narudžbenice priložite ručno: Pregled → Ispis → "Spremi kao PDF".'+upozorenje+'\n\nNastaviti?')){try{gw&&gw.close();}catch(e){}return;}
   const gUrl='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  if(gw) gw.location.href=gUrl; else window.open(gUrl,'_blank');
-  setTimeout(async()=>{
-    if(!confirm('Jeste li poslali mail dobavljaču?\n\nU redu = označi narudžbenicu kao poslanu.\nOdustani = ostaje kako je.')) return;
+  const old=document.getElementById('posalji-dlg'); if(old) old.remove();
+  const dlg=document.createElement('div');
+  dlg.id='posalji-dlg';
+  dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+  dlg.innerHTML=`<div style="background:#fff;border-radius:10px;max-width:460px;width:100%;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13.5px;line-height:1.5">
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">Slanje narudžbenice ${n.broj}</div>
+    <div style="margin-bottom:10px"><strong>Primatelj:</strong> ${email||'<span style="color:#992222">nije upisan email dobavljača (upišite ga ručno u Gmailu)</span>'}</div>
+    <ol style="margin:0 0 14px 18px;padding:0">
+      <li>Spremite PDF: Pregled narudžbenice → Ispis → "Spremi kao PDF".</li>
+      <li>Kliknite <strong>Otvori Gmail</strong> i priložite PDF.</li>
+      <li>Nakon slanja kliknite <strong>Poslano – označi</strong>.</li>
+    </ol>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="${gUrl}" target="_blank" rel="noopener" class="btn bp" style="text-decoration:none">Otvori Gmail</a>
+      <button class="btn bs" id="posalji-oznaci">Poslano – označi</button>
+      <button class="btn bs" id="posalji-zatvori">Zatvori</button>
+    </div></div>`;
+  document.body.appendChild(dlg);
+  document.getElementById('posalji-zatvori').onclick=()=>dlg.remove();
+  document.getElementById('posalji-oznaci').onclick=async()=>{
     await SB.from('narudzbenice').update({status:'poslana',slano_dobavljacu:true,datum_slanja:new Date().toISOString().split('T')[0],updated_at:new Date().toISOString()}).eq('id',id);
     await logN('narudzbenica',id,n.broj,'Označena kao poslana dobavljaču',email?('Primatelj: '+email):null);
+    dlg.remove();
     showToast('✅ Narudžbenica označena kao poslana!','success');
     closeM('mo-pregled-nab');
     loadNarudzbenice();
-  },600);
+  };
 }
 
 // ══ POSTAVKE TVRTKE ════════════════════════════════════════════
