@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-H</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-I</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -1758,7 +1758,7 @@ function doLoginLocal(){
   document.getElementById("ls").style.display="none";
   document.getElementById("app").style.display="flex";
   document.getElementById("tN").textContent=user.name;
-  document.getElementById("tR").textContent=user.role==="admin"?"Administrator":"Voditelj";
+  document.getElementById("tR").textContent=nazivUloge(user.role);
   document.getElementById("tAv").textContent=user.name.split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();
   SB_USER = null; // local mode
   afterLoginSuccess();
@@ -1856,6 +1856,7 @@ async function rDash(){
 
 // ══ ULOGE I OVLASTI (Nabava) ══════════════════════════════════
 function isAdmin(){return CU?.role==='admin';}
+function nazivUloge(r){return ({admin:'Administrator',direktor:'Direktor',nabava:'Nabava',voditelj:'Voditelj',korisnik:'Korisnik'})[r]||'Korisnik';}
 function seesAllNabava(){return ['admin','nabava','direktor'].includes(CU?.role);}
 function nabJedIds(){
   if(seesAllNabava()) return DB.jedinice.map(j=>j.id);
@@ -3632,7 +3633,7 @@ async function loadKorisnikProfile(){
   CU.pjid    = data.prim_jed_id;
   document.getElementById('tN').textContent = CU.name;
   document.getElementById('tAv').textContent = CU.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
-  document.getElementById('tR').textContent = CU.role==='admin'?'Administrator':'Voditelj';
+  document.getElementById('tR').textContent = nazivUloge(CU.role);
   if(CU.role==='admin') document.getElementById('anav').style.display='block';
   ['dobavljaci','plan-nabave'].forEach(p=>{const e=document.getElementById('nav-'+p); if(e) e.style.display=seesAllNabava()?'':'none';});
 }
