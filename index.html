@@ -4835,7 +4835,7 @@ async function loadNarudzbenice(){
             ${((n.status==='nacrt'||n.status==='odbijena')&&canProcessNabava())?`<button class="btn bsm bs" onclick="editNarudzbenica(${n.id})"><i class="ti ti-edit"></i>${n.status==='odbijena'?' Doradi':''}</button>`:''}
             ${(n.status==='kod_direktora'&&canApprove())?`<button class="btn bsm bp" onclick="odobriNarudzbenicu(${n.id},true)"><i class="ti ti-check"></i> Odobri</button><button class="btn bsm bd" onclick="odobriNarudzbenicu(${n.id},false)"><i class="ti ti-x"></i></button>`:''}
             ${(n.status==='odobrena'&&canApprove())?`<button class="btn bsm bs" onclick="ponistiOdobrenjeNarudzbenice(${n.id})"><i class="ti ti-arrow-back-up"></i> Makni odobrenje</button>`:''}
-            ${n.status==='odobrena'?`<button class="btn bsm bp" onclick="posaljiNarudzbenicu(${n.id})"><i class="ti ti-send"></i> Pošalji</button>`:''}
+            ${(n.status==='odobrena'&&canProcessNabava())?`<button class="btn bsm bp" onclick="posaljiNarudzbenicu(${n.id})"><i class="ti ti-send"></i> Pošalji</button>`:''}
           </div>
         </td>
       </tr>`;
@@ -5276,7 +5276,7 @@ async function pregledNarudzbenica(id){
   }
   if(n.status==='odobrena'){
     if(canApprove()) actions+=`<button class="btn bs" onclick="ponistiOdobrenjeNarudzbenice(${id})"><i class="ti ti-arrow-back-up"></i> Makni odobrenje</button>`;
-    actions+=`<button class="btn bp" onclick="posaljiNarudzbenicu(${id})"><i class="ti ti-send"></i> Pošalji dobavljaču</button>`;
+    if(canProcessNabava()) actions+=`<button class="btn bp" onclick="posaljiNarudzbenicu(${id})"><i class="ti ti-send"></i> Pošalji dobavljaču</button>`;
   }
   actions+=`<button class="btn bs" onclick="printNarudzbenica()"><i class="ti ti-printer"></i> Ispis</button>`;
   document.getElementById('pregled-nab-actions').innerHTML=actions;
@@ -5396,6 +5396,7 @@ async function ponistiOdobrenjeNarudzbenice(id){
 }
 
 async function posaljiNarudzbenicu(id){
+  if(!canProcessNabava()){showToast('Slanje dobavljaču može samo nabava.','error');return;}
   const {data:n}=await SB.from('narudzbenice').select('*').eq('id',id).single();
   if(!n) return;
   let email='';
