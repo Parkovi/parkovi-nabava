@@ -5415,7 +5415,7 @@ async function preuzmiNarPdf(){
   try{
     await ensureHtml2pdf();
     showToast('Pripremam PDF...','info');
-    await html2pdf().set(pdfOpts('Narudzbenica_'+(window.__NAR_PRINT_TITLE||'').replace(/[^0-9A-Za-z-]+/g,'_')+'.pdf')).from(el).save();
+    await html2pdf().set(pdfOpts('Narudzbenica_'+(window.__NAR_PRINT_TITLE||'').replace(/^Narudžbenica\s*/,'').replace(/[^0-9A-Za-z-]+/g,'_')+'.pdf')).from(el).save();
   }catch(e){showToast('PDF greška: '+e.message,'error');}
 }
 // Generira PDF odobrene narudžbenice i sprema ga u Storage; vraća javni URL
@@ -5449,6 +5449,7 @@ async function posaljiNarudzbenicu(id){
   const body=`Poštovani,\n\nu privitku vam šaljemo narudžbenicu br. ${n.broj} od ${n.datum}.\nMolimo potvrdu primitka i isporuke.\n\nSrdačan pozdrav,\n${n.sastavio_ime||''}\n${tvrtka}`;
   let pdfUrl=n.pdf_url||'';
   if(!pdfUrl) pdfUrl=(await arhivirajPdf(id))||'';
+  if(pdfUrl) pdfUrl=pdfUrl.split('?')[0]+'?download='+encodeURIComponent('Narudzbenica_'+String(n.broj).replace(/[^0-9A-Za-z-]+/g,'_')+'.pdf');
   const gUrl='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   const old=document.getElementById('posalji-dlg'); if(old) old.remove();
   const dlg=document.createElement('div');
@@ -5458,7 +5459,7 @@ async function posaljiNarudzbenicu(id){
     <div style="font-size:16px;font-weight:700;margin-bottom:8px">Slanje narudžbenice ${n.broj}</div>
     <div style="margin-bottom:10px"><strong>Primatelj:</strong> ${email||'<span style="color:#992222">nije upisan email dobavljača (upišite ga ručno u Gmailu)</span>'}</div>
     <ol style="margin:0 0 14px 18px;padding:0">
-      <li>Preuzmite PDF: ${pdfUrl?`<a href="${pdfUrl}" target="_blank" rel="noopener"><strong>Preuzmi PDF narudžbenice</strong></a>`:'(PDF nije dostupan — u pregledu kliknite Preuzmi PDF)'}</li>
+      <li>Preuzmite PDF: ${pdfUrl?`<a href="${pdfUrl}" download><strong>Preuzmi PDF narudžbenice</strong></a>`:'(PDF nije dostupan — u pregledu kliknite Preuzmi PDF)'}</li>
       <li>Kliknite <strong>Otvori Gmail</strong> i priložite preuzeti PDF.</li>
       <li>Nakon slanja kliknite <strong>Poslano – označi</strong>.</li>
     </ol>
