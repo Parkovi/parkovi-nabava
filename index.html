@@ -5278,6 +5278,7 @@ async function pregledNarudzbenica(id){
     if(canApprove()) actions+=`<button class="btn bs" onclick="ponistiOdobrenjeNarudzbenice(${id})"><i class="ti ti-arrow-back-up"></i> Makni odobrenje</button>`;
     if(canProcessNabava()) actions+=`<button class="btn bp" onclick="posaljiNarudzbenicu(${id})"><i class="ti ti-send"></i> Pošalji dobavljaču</button>`;
   }
+  actions+=`<button class="btn bs" onclick="preuzmiNarPdf()"><i class="ti ti-file-download"></i> Preuzmi PDF</button>`;
   actions+=`<button class="btn bs" onclick="printNarudzbenica()"><i class="ti ti-printer"></i> Ispis</button>`;
   document.getElementById('pregled-nab-actions').innerHTML=actions;
   openM('mo-pregled-nab');
@@ -5376,6 +5377,7 @@ async function odobriNarudzbenicu(id,odobri){
       const kod=await narKod(nF,sF);
       await SB.from('narudzbenice').update({kontrolni_kod:kod}).eq('id',id);
       await logN('narudzbenica',id,nF.broj,'Odobrena','Kontrolni kod: '+kod);
+      await arhivirajPdf(id);
     }catch(e){console.warn(e);}
     showToast('✅ Narudžbenica odobrena!','success');
   }
@@ -5388,11 +5390,51 @@ async function ponistiOdobrenjeNarudzbenice(id){
   await SB.from('narudzbenice').update({status:'kod_direktora',odobrio_ime:null,datum_odobrenja:null,updated_at:new Date().toISOString()}).eq('id',id);
   const {data:nPo}=await SB.from('narudzbenice').select('zahtjevnica_id').eq('id',id).single();
   await syncZahStatus(nPo?.zahtjevnica_id,'kod_direktora');
-  await SB.from('narudzbenice').update({kontrolni_kod:null}).eq('id',id);
+  await SB.from('narudzbenice').update({kontrolni_kod:null,pdf_url:null}).eq('id',id);
   await logN('narudzbenica',id,await brojDok('narudzbenice',id),'Odobrenje poništeno');
   showToast('Odobrenje poništeno','info');
   closeM('mo-pregled-nab');
   loadNarudzbenice();
+}
+
+// ══ PDF NARUDŽBENICE ═════════════════════════════════════════════
+function ensureHtml2pdf(){
+  return new Promise((res,rej)=>{
+    if(window.html2pdf) return res();
+    const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error('Ne mogu učitati PDF biblioteku (internet?)'));
+    document.head.appendChild(sc);
+  });
+}
+function pdfOpts(naziv){
+  return {margin:[10,10,10,10],filename:naziv,image:{type:'jpeg',quality:0.95},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['avoid-all','css']}};
+}
+async function preuzmiNarPdf(){
+  const el=document.getElementById('nar-doc'); if(!el) return;
+  try{
+    await ensureHtml2pdf();
+    showToast('Pripremam PDF...','info');
+    await html2pdf().set(pdfOpts('Narudzbenica_'+(window.__NAR_PRINT_TITLE||'').replace(/[^0-9A-Za-z-]+/g,'_')+'.pdf')).from(el).save();
+  }catch(e){showToast('PDF greška: '+e.message,'error');}
+}
+// Generira PDF odobrene narudžbenice i sprema ga u Storage; vraća javni URL
+async function arhivirajPdf(id){
+  try{
+    await pregledNarudzbenica(id);
+    const el=document.getElementById('nar-doc'); if(!el) throw new Error('dokument nije prikazan');
+    await ensureHtml2pdf();
+    const blob=await html2pdf().set(pdfOpts('n.pdf')).from(el).outputPdf('blob');
+    closeM('mo-pregled-nab');
+    const {data:n}=await SB.from('narudzbenice').select('broj').eq('id',id).single();
+    const path='narudzbenice/Narudzbenica_'+String(n.broj).replace(/[^0-9A-Za-z-]+/g,'_')+'.pdf';
+    const {error:upErr}=await SB.storage.from('ponude').upload(path,blob,{upsert:true,contentType:'application/pdf'});
+    if(upErr) throw upErr;
+    const {data:u}=SB.storage.from('ponude').getPublicUrl(path);
+    const url=u.publicUrl+'?v='+Date.now();
+    await SB.from('narudzbenice').update({pdf_url:url}).eq('id',id);
+    return url;
+  }catch(e){console.warn('PDF arhiva:',e);showToast('PDF nije spremljen: '+e.message,'error');return null;}
 }
 
 async function posaljiNarudzbenicu(id){
@@ -5405,6 +5447,8 @@ async function posaljiNarudzbenicu(id){
   const tvrtka=pt.naziv||'Parkovi i nasadi d.o.o.';
   const subject=`Narudžbenica ${n.broj} – ${tvrtka}`;
   const body=`Poštovani,\n\nu privitku vam šaljemo narudžbenicu br. ${n.broj} od ${n.datum}.\nMolimo potvrdu primitka i isporuke.\n\nSrdačan pozdrav,\n${n.sastavio_ime||''}\n${tvrtka}`;
+  let pdfUrl=n.pdf_url||'';
+  if(!pdfUrl) pdfUrl=(await arhivirajPdf(id))||'';
   const gUrl='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   const old=document.getElementById('posalji-dlg'); if(old) old.remove();
   const dlg=document.createElement('div');
@@ -5414,8 +5458,8 @@ async function posaljiNarudzbenicu(id){
     <div style="font-size:16px;font-weight:700;margin-bottom:8px">Slanje narudžbenice ${n.broj}</div>
     <div style="margin-bottom:10px"><strong>Primatelj:</strong> ${email||'<span style="color:#992222">nije upisan email dobavljača (upišite ga ručno u Gmailu)</span>'}</div>
     <ol style="margin:0 0 14px 18px;padding:0">
-      <li>Spremite PDF: Pregled narudžbenice → Ispis → "Spremi kao PDF".</li>
-      <li>Kliknite <strong>Otvori Gmail</strong> i priložite PDF.</li>
+      <li>Preuzmite PDF: ${pdfUrl?`<a href="${pdfUrl}" target="_blank" rel="noopener"><strong>Preuzmi PDF narudžbenice</strong></a>`:'(PDF nije dostupan — u pregledu kliknite Preuzmi PDF)'}</li>
+      <li>Kliknite <strong>Otvori Gmail</strong> i priložite preuzeti PDF.</li>
       <li>Nakon slanja kliknite <strong>Poslano – označi</strong>.</li>
     </ol>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
