@@ -1821,12 +1821,15 @@ function avC(s){const c=[["#dce8f5","#1a5fa8"],["#e8f3df","#2d6b0f"],["#faebd6",
 async function rDash(){
   document.getElementById('dash-actions').innerHTML=canCreateZahtjevnica()?`<button class="btn bp" onclick="sP('zahtjevnice');setTimeout(openNovaZahtjevnica,50)"><i class="ti ti-plus"></i> Nova zahtjevnica</button>`:'';
 
-  const {data:zah}=await SB.from('zahtjevnice').select('id,broj,datum,mjesto_troska,zatrazio_ime,status').order('id',{ascending:false}).limit(8);
-  const {data:nar}=await SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_s_pdv,status').order('id',{ascending:false}).limit(8);
+  const mojeZ=await nabMojeZahIds();
+  const fz=q=>mojeZ?q.in('id',mojeZ.length?mojeZ:[-1]):q;
+  const fn=q=>mojeZ?q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]):q;
+  const {data:zah}=await fz(SB.from('zahtjevnice').select('id,broj,datum,mjesto_troska,zatrazio_ime,status')).order('id',{ascending:false}).limit(8);
+  const {data:nar}=await fn(SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_s_pdv,status')).order('id',{ascending:false}).limit(8);
 
   const zStats={};(zah||[]).forEach(z=>{}); // placeholder, counts computed below
-  const {data:allZah}=await SB.from('zahtjevnice').select('status');
-  const {data:allNar}=await SB.from('narudzbenice').select('status');
+  const {data:allZah}=await fz(SB.from('zahtjevnice').select('status'));
+  const {data:allNar}=await fn(SB.from('narudzbenice').select('status'));
   const cZ={};(allZah||[]).forEach(z=>cZ[z.status]=(cZ[z.status]||0)+1);
   const cN={};(allNar||[]).forEach(n=>cN[n.status]=(cN[n.status]||0)+1);
 
@@ -1849,6 +1852,22 @@ async function rDash(){
 
 // ══ ULOGE I OVLASTI (Nabava) ══════════════════════════════════
 function isAdmin(){return CU?.role==='admin';}
+function seesAllNabava(){return ['admin','nabava','direktor'].includes(CU?.role);}
+function nabJedIds(){
+  if(seesAllNabava()) return DB.jedinice.map(j=>j.id);
+  const ids=(CU?.jedinice||[]).slice(); if(!ids.length&&CU?.pjid) ids.push(CU.pjid);
+  return ids;
+}
+// ID-evi zahtjevnica koje korisnik smije vidjeti (njegova jedinica ili je on kreirao); null = sve
+async function nabMojeZahIds(){
+  if(seesAllNabava()) return null;
+  const ids=nabJedIds(), uid=SB_USER?.id;
+  let q=SB.from('zahtjevnice').select('id');
+  const parts=[]; if(ids.length) parts.push(`jedinica_id.in.(${ids.join(',')})`); if(uid) parts.push(`created_by.eq.${uid}`);
+  if(!parts.length) return [];
+  const {data}=await q.or(parts.join(','));
+  return (data||[]).map(x=>x.id);
+}
 function canCreateZahtjevnica(){return !!CU;} // svaki prijavljeni korisnik
 function canProcessNabava(){return ['admin','nabava'].includes(CU?.role);}
 function canApprove(){return ['admin','direktor'].includes(CU?.role);}
@@ -3611,6 +3630,7 @@ async function loadKorisnikProfile(){
   document.getElementById('tAv').textContent = CU.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('tR').textContent = CU.role==='admin'?'Administrator':'Voditelj';
   if(CU.role==='admin') document.getElementById('anav').style.display='block';
+  ['dobavljaci','plan-nabave'].forEach(p=>{const e=document.getElementById('nav-'+p); if(e) e.style.display=seesAllNabava()?'':'none';});
 }
 
 // ── LOAD EVIDENCIJA (lazy — only when needed) ─────────────────────────────
@@ -3734,6 +3754,7 @@ async function afterLoginSuccess(){
   document.getElementById('tN').textContent = CU.name||'';
   document.getElementById('tAv').textContent = (CU.name||'A').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
   if(CU.role==='admin') document.getElementById('anav').style.display='block';
+  ['dobavljaci','plan-nabave'].forEach(p=>{const e=document.getElementById('nav-'+p); if(e) e.style.display=seesAllNabava()?'':'none';});
   if(isLive()) document.getElementById('sb-config-banner').classList.add('hidden');
   document.getElementById('sb-mode-badge').textContent = isLive()?'● Live baza':'● Lokalno';
   document.getElementById('sb-mode-badge').className = 'sb-mode-badge '+(isLive()?'sb-mode-live':'sb-mode-local');
@@ -4492,7 +4513,7 @@ async function nextNarBroj(god){
 // ══ ZAHTJEVNICE ════════════════════════════════════════════════
 
 async function setupZahtjevnice(){
-  const vj=vJ(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
+  const vj=nabJedIds(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
   const el=document.getElementById('zah-fj');
   if(el) el.innerHTML='<option value="">Sve jedinice</option>'+jeds.map(j=>`<option value="${j.id}">${j.name}</option>`).join('');
   await loadZahtjevnice();
@@ -4512,7 +4533,12 @@ async function loadZahtjevnice(){
     if(st) q=q.eq('status',st);
     if(vr) q=q.eq('vrsta',vr);
     if(jid) q=q.eq('jedinica_id',parseInt(jid));
-    if(CU?.role==='voditelj') q=q.eq('created_by',SB_USER?.id);
+    if(!seesAllNabava()){
+      const ids=nabJedIds(), uid=SB_USER?.id, parts=[];
+      if(ids.length) parts.push(`jedinica_id.in.(${ids.join(',')})`);
+      if(uid) parts.push(`created_by.eq.${uid}`);
+      q=parts.length?q.or(parts.join(',')):q.eq('id',-1);
+    }
     const {data,error}=await q;
     if(error) throw error;
     if(!data||!data.length){el.innerHTML='<div class="empty"><i class="ti ti-file-description"></i><p>Nema zahtjevnica za odabrane filtere</p></div>';return;}
@@ -4567,7 +4593,7 @@ async function openNovaZahtjevnica(){
   window._zahPonudaFile=null;
   document.getElementById('zah-ponuda-preview').textContent='';
   document.getElementById('zah-al').innerHTML='';
-  const vj=vJ(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
+  const vj=nabJedIds(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
   document.getElementById('zah-jed').innerHTML=jeds.map(j=>`<option value="${j.id}">${j.name}</option>`).join('');
   window._zahStavke=[{svrha:'',naziv:'',jed_mjere:'kom',kolicina:1}];
   renderZahStavke();
@@ -4589,7 +4615,7 @@ async function editZahtjevnica(id){
   window._zahPonudaFile=null;
   document.getElementById('zah-ponuda-preview').textContent=z.ponuda_url?'📎 Ponuda već priložena (odaberi novu datoteku za zamjenu)':'';
   document.getElementById('zah-al').innerHTML='';
-  const vj=vJ(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
+  const vj=nabJedIds(), jeds=DB.jedinice.filter(j=>vj.includes(j.id));
   document.getElementById('zah-jed').innerHTML=jeds.map(j=>`<option value="${j.id}" ${j.id===z.jedinica_id?'selected':''}>${j.name}</option>`).join('');
   window._zahStavke=(stavke||[]).map(s=>({svrha:s.svrha_utroska||'',naziv:s.naziv,jed_mjere:s.jed_mjere||'kom',kolicina:s.kolicina_trazena||1}));
   if(!window._zahStavke.length) window._zahStavke=[{svrha:'',naziv:'',jed_mjere:'kom',kolicina:1}];
@@ -4779,6 +4805,8 @@ async function loadNarudzbenice(){
   try{
     let q=SB.from('narudzbenice').select('*').eq('godina',god).order('id',{ascending:false});
     if(st) q=q.eq('status',st);
+    const mojeZ=await nabMojeZahIds();
+    if(mojeZ) q=q.in('zahtjevnica_id',mojeZ.length?mojeZ:[-1]);
     const {data,error}=await q;
     if(error) throw error;
     if(!data||!data.length){el.innerHTML='<div class="empty"><i class="ti ti-shopping-cart"></i><p>Nema narudžbenica</p></div>';return;}
