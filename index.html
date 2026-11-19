@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.1-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.2-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -1219,6 +1219,11 @@ select{cursor:pointer}
         <div class="fg" style="margin:0"><label class="fl">Ugovorena vrijednost bez PDV-a (EUR) <span class="req">*</span></label><input type="number" id="zu-vrijednost" min="0" step="0.01"></div>
         <div class="fg" style="margin:0"><label class="fl">Ugovor vrijedi do</label><input type="date" id="zu-do"></div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="fg" style="margin:0"><label class="fl">Status ugovora</label><select id="zu-status"><option value="na_snazi">Na snazi</option><option value="raskinut">Raskinut / prekinut</option><option value="istekao">Istekao</option><option value="ispunjen">Ispunjen</option></select></div>
+        <div class="fg" style="margin:0"><label class="fl">Datum prekida</label><input type="date" id="zu-prekid"></div>
+        <div class="fg" style="margin:0"><label class="fl">Razlog prekida</label><input type="text" id="zu-razlog"></div>
+      </div>
       <div class="fg"><label class="fl">Stavka plana nabave <span class="req">*</span></label><select id="zu-plan"></select></div>
       <div class="fg"><label class="fl">Napomena</label><textarea id="zu-nap" rows="2"></textarea></div>
       <div class="fl" style="margin-bottom:6px">Prilozi</div>
@@ -1229,6 +1234,25 @@ select{cursor:pointer}
       <button class="btn bs" onclick="closeM('mo-zn-ug')">Odustani</button>
       <button class="btn bp" onclick="saveZnPostupak()"><i class="ti ti-device-floppy"></i> Spremi</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: Aneks ugovora -->
+<div class="mo" id="mo-zn-aneks">
+  <div class="md" style="max-width:560px;width:96%">
+    <div class="mhd"><div class="mtt"><i class="ti ti-file-plus"></i> <span id="za-title">Aneks ugovora</span></div><button class="mcl" onclick="closeM('mo-zn-aneks')">✕</button></div>
+    <div class="mb">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="fg" style="margin:0"><label class="fl">Broj aneksa</label><input type="text" id="za-broj" placeholder="npr. Aneks 1"></div>
+        <div class="fg" style="margin:0"><label class="fl">Datum</label><input type="date" id="za-datum"></div>
+        <div class="fg" style="margin:0"><label class="fl">Nova ukupna vrijednost bez PDV-a (EUR)</label><input type="number" id="za-vr" min="0" step="0.01" placeholder="ostavi prazno ako se ne mijenja"></div>
+        <div class="fg" style="margin:0"><label class="fl">Novi rok važenja</label><input type="date" id="za-rok"></div>
+      </div>
+      <div class="fg"><label class="fl">Što se mijenja</label><textarea id="za-opis" rows="3"></textarea></div>
+      <div class="fg"><label class="fl">Prilog (potpisani aneks)</label><input type="file" id="za-file" style="font-size:12px"></div>
+      <div id="za-al"></div>
+    </div>
+    <div class="mft"><button class="btn bs" onclick="closeM('mo-zn-aneks')">Odustani</button><button class="btn bp" onclick="saveAneks()"><i class="ti ti-device-floppy"></i> Spremi aneks</button></div>
   </div>
 </div>
 
@@ -5491,6 +5515,7 @@ const ZN_STATUS={
   odbijen:{lbl:'Odbijen',cls:'bdg bad'}
 };
 const ZN_PRIL_TIP={troskovnik:'Troškovnik (Excel)',specifikacije:'Tehničke specifikacije (Word)',ostalo:'Ostali prilozi'};
+const ZN_UG_STATUS={na_snazi:'Na snazi',raskinut:'Raskinut / prekinut',istekao:'Istekao',ispunjen:'Ispunjen'};
 const ZN_UG_TIP={ugovor:'Ugovor (PDF)',troskovnik_ug:'Troškovnik ugovora (Excel)',odluka:'Odluka o odabiru',ugovor_ostalo:'Ostali dokumenti ugovora'};
 function znEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function canVoditiPostupak(){return ['admin','javna_nabava'].includes(CU?.role);}
@@ -5551,11 +5576,13 @@ async function loadZahtjeviNabave(){
           <td style="padding:8px 10px">${znEsc(z.predmet)}</td>
           <td style="padding:8px 10px">${znEsc(jn)}</td>
           <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fmtEUR(z.procijenjena_vrijednost)}</td>
-          <td style="padding:8px 10px;text-align:center"><span class="${s.cls}">${s.lbl}</span></td>
+          <td style="padding:8px 10px;text-align:center"><span class="${s.cls}">${s.lbl}</span>${(z.status==='proveden'&&z.ugovor_status&&z.ugovor_status!=='na_snazi')?`<div style="font-size:11px;color:#c0392b;margin-top:2px">${ZN_UG_STATUS[z.ugovor_status]||''}</div>`:''}</td>
           <td style="padding:8px 10px"><div style="display:flex;gap:4px;flex-wrap:wrap">
             <button class="btn bsm bs" onclick="pregledZN(${z.id})"><i class="ti ti-eye"></i> Pregled</button>
             ${znSmijeUrediti(z)?`<button class="btn bsm bs" onclick="editZN(${z.id})"><i class="ti ti-edit"></i>${z.status==='vracen'?' Doradi':''}</button>`:''}
             ${(z.status==='kod_direktora'&&canApprove())?`<button class="btn bsm bp" onclick="pregledZN(${z.id})"><i class="ti ti-check"></i> Odluka</button>`:''}
+            ${(['odobren','proveden'].includes(z.status)&&canVoditiPostupak())?`<button class="btn bsm bp" onclick="otvoriPostupakZN(${z.id})"><i class="ti ti-gavel"></i> ${z.status==='proveden'?'Uredi ugovor':'Postupak i ugovor'}</button>`:''}
+            ${(z.status==='proveden'&&canVoditiPostupak())?`<button class="btn bsm bs" onclick="otvoriAneks(${z.id})"><i class="ti ti-file-plus"></i> Aneks</button>`:''}
           </div></td></tr>`;
       }).join('')+`</tbody></table></div>`;
   }catch(e){el.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Je li pokrenut SQL zahtjevi_nabave.sql u Supabaseu?</div>`;}
@@ -5688,6 +5715,15 @@ async function pregledZN(id){
       it.map(p=>`<div style="font-size:12.5px"><a href="${znEsc(p.url)}?download=${encodeURIComponent(p.naziv||'prilog')}" target="_blank" download="${znEsc(p.naziv||'prilog')}"><i class="ti ti-paperclip"></i> ${znEsc(p.naziv)}</a></div>`).join('')+`</div>`;
   }).join('')||'<div style="font-size:12.5px;color:var(--text2)">Nema priloga</div>';
   await ucitajPlanMapu();
+  const {data:anx}=await SB.from('zahtjevi_nabave_aneksi').select('*').eq('zahtjev_id',id).order('id');
+  const lastV=(anx||[]).filter(x=>x.nova_vrijednost!=null).slice(-1)[0], lastR=(anx||[]).filter(x=>x.novi_rok).slice(-1)[0];
+  const trenV=lastV?lastV.nova_vrijednost:z.ugovor_vrijednost, trenR=lastR?lastR.novi_rok:z.ugovor_do;
+  const anxHtml=(anx&&anx.length)?`<div style="margin-top:10px"><div style="font-size:11px;color:var(--text2);margin-bottom:3px">Aneksi ugovora</div>`+anx.map(x=>`<div style="font-size:12.5px;padding:4px 0;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <strong>${znEsc(x.broj||'Aneks')}</strong><span>${x.datum||''}</span><span style="flex:1">${znEsc(x.opis||'')}</span>
+      ${x.nova_vrijednost!=null?`<span>nova vrijednost: <strong>${fmtEUR(x.nova_vrijednost)}</strong></span>`:''}${x.novi_rok?`<span>novi rok: <strong>${x.novi_rok}</strong></span>`:''}
+      ${x.url?`<a href="${znEsc(x.url)}?download=${encodeURIComponent(x.naziv_datoteke||'aneks')}" target="_blank" download="${znEsc(x.naziv_datoteke||'aneks')}"><i class="ti ti-paperclip"></i> ${znEsc(x.naziv_datoteke||'prilog')}</a>`:''}
+      ${canVoditiPostupak()?`<button class="btn bxs bd" onclick="obrisiAneks(${x.id},${id})" title="Obriši aneks"><i class="ti ti-trash"></i></button>`:''}</div>`).join('')+`</div>`:'';
+  const ugSt=ZN_UG_STATUS[z.ugovor_status||'na_snazi']||'';
   const ugAtt=Object.keys(ZN_UG_TIP).map(t=>{
     const it=(pr||[]).filter(p=>p.tip===t); if(!it.length) return '';
     return `<div style="margin-bottom:4px"><div style="font-size:11px;color:var(--text2)">${ZN_UG_TIP[t]}</div>`+it.map(p=>`<div style="font-size:12.5px"><a href="${znEsc(p.url)}?download=${encodeURIComponent(p.naziv||'prilog')}" target="_blank" download="${znEsc(p.naziv||'prilog')}"><i class="ti ti-paperclip"></i> ${znEsc(p.naziv)}</a></div>`).join('')+`</div>`;
@@ -5698,13 +5734,15 @@ async function pregledZN(id){
       <div><div style="font-size:11px;color:var(--text2)">EOJN evidencijski broj</div>${znEsc(z.eojn_broj||'–')}</div>
       <div><div style="font-size:11px;color:var(--text2)">Datum odluke / završetka postupka</div>${z.datum_postupka||'–'}</div>
       <div><div style="font-size:11px;color:var(--text2)">Odabrani dobavljač</div><strong>${znEsc(z.dobavljac_naziv||'–')}</strong>${z.dobavljac_oib?' (OIB '+znEsc(z.dobavljac_oib)+')':''}</div>
-      <div><div style="font-size:11px;color:var(--text2)">Ugovorena vrijednost (bez PDV-a)</div><strong>${fmtEUR(z.ugovor_vrijednost)}</strong></div>
+      <div><div style="font-size:11px;color:var(--text2)">Ugovorena vrijednost (bez PDV-a)</div><strong>${fmtEUR(z.ugovor_vrijednost)}</strong>${lastV?`<div style="font-size:11.5px">Trenutna (po aneksima): <strong>${fmtEUR(trenV)}</strong></div>`:''}</div>
       <div><div style="font-size:11px;color:var(--text2)">Broj i datum ugovora</div>${znEsc(z.ugovor_broj||'–')}${z.ugovor_datum?' od '+z.ugovor_datum:''}</div>
-      <div><div style="font-size:11px;color:var(--text2)">Ugovor vrijedi do</div>${z.ugovor_do||'–'}</div>
+      <div><div style="font-size:11px;color:var(--text2)">Ugovor vrijedi do</div>${trenR||'–'}${lastR?' <span style="font-size:11.5px;color:var(--text2)">(po aneksu)</span>':''}</div>
+      <div><div style="font-size:11px;color:var(--text2)">Status ugovora</div><strong style="color:${(z.ugovor_status&&z.ugovor_status!=='na_snazi')?'#c0392b':'#22863a'}">${ugSt}</strong>${z.prekid_datum?' od '+z.prekid_datum:''}${z.prekid_razlog?'<div style="font-size:11.5px">'+znEsc(z.prekid_razlog)+'</div>':''}</div>
       <div style="grid-column:1/3"><div style="font-size:11px;color:var(--text2)">Stavka plana nabave</div><strong>${z.plan_stavka_id?znEsc(window._planMapNar?.[z.plan_stavka_id]||'(stavka nije pronađena)'):'<span style="color:#c0392b">Nije povezano s planom</span>'}</strong></div>
       ${z.napomena_postupka?`<div style="grid-column:1/3"><div style="font-size:11px;color:var(--text2)">Napomena</div>${znEsc(z.napomena_postupka)}</div>`:''}
     </div>
     ${ugAtt?`<div style="margin-top:10px">${ugAtt}</div>`:''}
+    ${anxHtml}
   </div>`:'';
   document.getElementById('pregled-nab-content').innerHTML=`<div class="nar-paper"><div id="zn-doc">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:12px;margin-bottom:12px;border-bottom:2px solid #00b38a">
@@ -5734,6 +5772,7 @@ async function pregledZN(id){
   a+=`<button class="btn bs" onclick="printZN()"><i class="ti ti-printer"></i> Ispis</button>`;
   if(znSmijeUrediti(z)) a+=`<button class="btn bp" onclick="closeM('mo-pregled-nab');editZN(${id})"><i class="ti ti-edit"></i> ${z.status==='vracen'?'Doradi i ponovno pošalji':'Uredi'}</button>`;
   if(z.status==='nacrt'&&(z.created_by===SB_USER?.id||isAdmin())) a+=`<button class="btn bd" onclick="obrisiZN(${id})"><i class="ti ti-trash"></i> Obriši nacrt</button>`;
+  if(z.status==='proveden'&&canVoditiPostupak()) a+=`<button class="btn bs" onclick="closeM('mo-pregled-nab');otvoriAneks(${id})"><i class="ti ti-file-plus"></i> Dodaj aneks</button>`;
   if(['odobren','proveden'].includes(z.status)&&canVoditiPostupak()) a+=`<button class="btn bp" onclick="closeM('mo-pregled-nab');otvoriPostupakZN(${id})"><i class="ti ti-gavel"></i> ${z.status==='proveden'?'Uredi postupak i ugovor':'Upiši provedeni postupak i ugovor'}</button>`;
   if(z.status==='kod_direktora'&&canApprove()){
     a+=`<button class="btn bd" onclick="znOdluka(${id},'odbij')"><i class="ti ti-x"></i> Odbij</button>`;
@@ -5785,7 +5824,7 @@ async function otvoriPostupakZN(id){
   document.getElementById('zn-ug-title').textContent='Postupak i ugovor – '+z.broj+' ('+z.predmet+')';
   const v=(i,x)=>document.getElementById(i).value=x==null?'':x;
   v('zu-eojn',z.eojn_broj); v('zu-datum',z.datum_postupka); v('zu-dob',z.dobavljac_naziv); v('zu-oib',z.dobavljac_oib);
-  v('zu-ubroj',z.ugovor_broj); v('zu-udatum',z.ugovor_datum); v('zu-vrijednost',z.ugovor_vrijednost); v('zu-do',z.ugovor_do); v('zu-nap',z.napomena_postupka);
+  v('zu-ubroj',z.ugovor_broj); v('zu-udatum',z.ugovor_datum); v('zu-vrijednost',z.ugovor_vrijednost); v('zu-do',z.ugovor_do); v('zu-nap',z.napomena_postupka); v('zu-status',z.ugovor_status||'na_snazi'); v('zu-prekid',z.prekid_datum); v('zu-razlog',z.prekid_razlog);
   document.getElementById('zu-plan').innerHTML='<option value="">— odaberi stavku plana —</option>'+(window._planAktivne||[]).map(p=>`<option value="${p.id}" ${String(z.plan_stavka_id)===String(p.id)?'selected':''}>${znEsc(p.label)}</option>`).join('');
   document.getElementById('zu-al').innerHTML='';
   renderZnUgPrilozi(); openM('mo-zn-ug');
@@ -5816,7 +5855,7 @@ async function saveZnPostupak(){
     if(!z||!['odobren','proveden'].includes(z.status)) throw new Error('Zahtjev nije u statusu odobren');
     const upd={status:'proveden',eojn_broj:g('zu-eojn')||null,datum_postupka:g('zu-datum')||null,dobavljac_naziv:dob,dobavljac_oib:g('zu-oib')||null,
       ugovor_broj:g('zu-ubroj')||null,ugovor_datum:g('zu-udatum')||null,ugovor_vrijednost:vr,ugovor_do:g('zu-do')||null,
-      plan_stavka_id:parseInt(plan),napomena_postupka:g('zu-nap')||null,updated_at:new Date().toISOString()};
+      plan_stavka_id:parseInt(plan),napomena_postupka:g('zu-nap')||null,ugovor_status:g('zu-status')||'na_snazi',prekid_datum:g('zu-prekid')||null,prekid_razlog:g('zu-razlog')||null,updated_at:new Date().toISOString()};
     const {error}=await SB.from('zahtjevi_nabave').update(upd).eq('id',id); if(error) throw error;
     if(window._znUkloni.length) await SB.from('zahtjevi_nabave_prilozi').delete().in('id',window._znUkloni);
     const neu=[];
@@ -5832,7 +5871,44 @@ async function saveZnPostupak(){
     closeM('mo-zn-ug');
     showToast(neu.length?('⚠️ Spremljeno, ali prilozi nisu učitani: '+neu.join(', ')):'✅ Postupak i ugovor spremljeni','success');
     loadZahtjeviNabave();
-  }catch(e){al.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Je li pokrenut SQL zahtjevi_nabave_faza2.sql?</div>`;}
+  }catch(e){al.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Jesu li pokrenute SQL skripte zahtjevi_nabave_faza2.sql i zahtjevi_nabave_faza2b.sql?</div>`;}
+}
+
+
+// ── Aneksi ugovora ──
+async function otvoriAneks(id){
+  const {data:z}=await SB.from('zahtjevi_nabave').select('broj,predmet').eq('id',id).single(); if(!z) return;
+  window._znAnx=id;
+  document.getElementById('za-title').textContent='Aneks ugovora – '+z.broj;
+  ['za-broj','za-datum','za-vr','za-rok','za-opis','za-file'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('za-al').innerHTML=''; openM('mo-zn-aneks');
+}
+async function saveAneks(){
+  const al=document.getElementById('za-al'), id=window._znAnx, g=i=>document.getElementById(i).value.trim();
+  const vr=g('za-vr')===''?null:parseFloat(g('za-vr'));
+  if(!g('za-broj')&&!g('za-opis')){al.innerHTML='<div class="al ald">Upiši broj aneksa ili što se mijenja.</div>';return;}
+  al.innerHTML='<div class="al ali"><i class="ti ti-loader-2"></i> Snimanje...</div>';
+  try{
+    const {data:z}=await SB.from('zahtjevi_nabave').select('broj').eq('id',id).single();
+    let url=null,naziv=null; const f=document.getElementById('za-file').files[0];
+    if(f){
+      naziv=f.name; const path=`zn/${z.broj.replace(/[^a-zA-Z0-9]/g,'_')}_aneks_${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const {error:ue}=await SB.storage.from('ponude').upload(path,f,{upsert:true}); if(ue) throw ue;
+      url=SB.storage.from('ponude').getPublicUrl(path).data?.publicUrl||null;
+    }
+    const {error}=await SB.from('zahtjevi_nabave_aneksi').insert({zahtjev_id:id,broj:g('za-broj')||null,datum:g('za-datum')||null,opis:g('za-opis')||null,nova_vrijednost:vr,novi_rok:g('za-rok')||null,naziv_datoteke:naziv,url,created_by:SB_USER?.id});
+    if(error) throw error;
+    await logN('zahtjev_nabave',id,z.broj,'Dodan aneks',(g('za-broj')||'')+(vr!=null?' nova vrijednost '+vr.toFixed(2)+' EUR':'')+(g('za-rok')?' novi rok '+g('za-rok'):''));
+    closeM('mo-zn-aneks'); showToast('✅ Aneks spremljen','success'); loadZahtjeviNabave();
+  }catch(e){al.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Je li pokrenut SQL zahtjevi_nabave_faza2b.sql?</div>`;}
+}
+async function obrisiAneks(aid,zid){
+  if(!confirm('Obrisati ovaj aneks?')) return;
+  const broj=await brojDok('zahtjevi_nabave',zid);
+  const {error}=await SB.from('zahtjevi_nabave_aneksi').delete().eq('id',aid);
+  if(error){showToast('Greška: '+error.message,'error');return;}
+  await logN('zahtjev_nabave',zid,broj,'Obrisan aneks');
+  closeM('mo-pregled-nab'); pregledZN(zid);
 }
 
 function printZN(){
