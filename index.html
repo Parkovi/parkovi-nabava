@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.3-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.5-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -337,6 +337,8 @@ select{cursor:pointer}
         <div class="sgl">Administracija</div>
         <div class="ni" onclick="sP('korisnici')" id="nav-korisnici"><i class="ti ti-shield-lock"></i> Korisnici i ovlasti</div>
         <div class="ni" onclick="sP('postavke-tvrtke')" id="nav-postavke-tvrtke"><i class="ti ti-building"></i> Postavke tvrtke</div>
+        <div class="ni" onclick="sP('sigurnosna-kopija')" id="nav-sigurnosna-kopija"><i class="ti ti-database-export"></i> Sigurnosna kopija</div>
+        <div class="ni" onclick="sP('obrisano')" id="nav-obrisano"><i class="ti ti-trash"></i> Obrisano</div>
         <div class="ni" onclick="sP('dnevnik-nabave')" id="nav-dnevnik-nabave"><i class="ti ti-history"></i> Dnevnik promjena</div>
       </div>
     </div>
@@ -431,6 +433,29 @@ select{cursor:pointer}
         </div>
       </div>
 
+      <div class="page" id="page-sigurnosna-kopija">
+        <div class="ph"><div><div class="pt">Sigurnosna kopija</div><div class="ps">Preuzmi sve podatke nabave u jednu datoteku. Spremi je na Google Disk (npr. jednom tjedno).</div></div></div>
+        <div class="card" style="max-width:700px">
+          <div id="bk-al"></div>
+          <p style="font-size:13px;margin-bottom:10px">Datoteka sadrži sve tablice nabave (narudžbenice, zahtjevnice, zahtjeve za nabavu, ugovore, anekse, račune, otpremnice, dobavljače, plan nabave, ovlasti, dnevnik) i popis poveznica na sve priložene dokumente.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn bp" id="bk-btn" onclick="napraviBackup()"><i class="ti ti-download"></i> Preuzmi sigurnosnu kopiju</button>
+            <button class="btn bs" id="bk-btn2" onclick="napraviBackup(true)"><i class="ti ti-paperclip"></i> Preuzmi i priloge (popis datoteka)</button>
+          </div>
+          <div id="bk-st" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
+          <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-weight:700;margin-bottom:4px"><i class="ti ti-database-import"></i> Vrati podatke iz kopije</div>
+            <div style="font-size:12.5px;color:var(--text2);margin-bottom:8px">Odaberi preuzetu datoteku <code>nabava-kopija_….json</code>. Aplikacija će pokazati što nedostaje u bazi. Vraćaju se samo zapisi koji više ne postoje; postojeći podaci se nikad ne mijenjaju.</div>
+            <input type="file" id="bk-file" accept=".json,application/json" onchange="bkPregled(this)">
+            <div id="bk-rs" style="margin-top:10px"></div>
+          </div>
+          <div style="margin-top:14px;font-size:12.5px;color:var(--text2)"><strong>Preporuka:</strong> spremi datoteku na Google Disk u mapu "Nabava kopije", u naziv ulazi datum. Čuvaj zadnjih 8–10 kopija.</div>
+        </div>
+      </div>
+      <div class="page" id="page-obrisano">
+        <div class="ph"><div><div class="pt">Obrisano</div><div class="ps">Zapisi koje je netko obrisao. Administrator ih može vratiti.</div></div></div>
+        <div class="card"><div id="kos-al"></div><div id="kos-list"></div></div>
+      </div>
       <div class="page" id="page-postavke-tvrtke">
         <div class="ph"><div><div class="pt">Postavke tvrtke</div><div class="ps">Podaci koji se prikazuju na narudžbenicama i drugim dokumentima</div></div></div>
         <div class="card" style="max-width:600px">
@@ -2002,7 +2027,7 @@ function sP(n){
   document.querySelectorAll(".ni").forEach(x=>x.classList.remove("active"));
   document.getElementById("page-"+n)?.classList.add("active");
   document.getElementById("nav-"+n)?.classList.add("active");
-  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,'zahtjevi-nabave':setupZahtjeviNabave,ugovori:setupUgovori,realizacija:setupRealizacija,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
+  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,'zahtjevi-nabave':setupZahtjeviNabave,ugovori:setupUgovori,realizacija:setupRealizacija,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'sigurnosna-kopija':setupBackup,obrisano:setupKos,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
 }
 
 function vJ(){
@@ -5918,6 +5943,7 @@ async function znOdluka(id,tip){
 async function obrisiZN(id){
   if(!confirm('Obrisati ovaj nacrt zahtjeva?')) return;
   const broj=await brojDok('zahtjevi_nabave',id);
+  await kosSnimi('zahtjevi_nabave',id,broj);
   const {error}=await SB.from('zahtjevi_nabave').delete().eq('id',id);
   if(error){showToast('Greška: '+error.message,'error');return;}
   await logN('zahtjev_nabave',id,broj,'Obrisan nacrt');
@@ -6016,6 +6042,7 @@ async function saveAneks(){
 async function obrisiAneks(aid,zid){
   if(!confirm('Obrisati ovaj aneks?')) return;
   const broj=await brojDok('zahtjevi_nabave',zid);
+  await kosSnimi('zahtjevi_nabave_aneksi',aid,'Aneks ugovora '+(broj||''));
   const {error}=await SB.from('zahtjevi_nabave_aneksi').delete().eq('id',aid);
   if(error){showToast('Greška: '+error.message,'error');return;}
   await logN('zahtjev_nabave',zid,broj,'Obrisan aneks');
@@ -6136,6 +6163,7 @@ async function znObrisiDok(tip,id,zid,kind){
   kind=kind||'zn'; const T=znTabele(kind);
   if(!confirm('Obrisati ovaj dokument?')) return;
   const broj=await brojDok(T.dok,zid);
+  await kosSnimi(tip==='racun'?T.rc:T.ot,id,(tip==='racun'?'Račun':'Otpremnica')+' – '+(broj||''));
   const {error}=await SB.from(tip==='racun'?T.rc:T.ot).delete().eq('id',id);
   if(error){showToast('Greška: '+error.message,'error');return;}
   await logN(T.tip,zid,broj,tip==='racun'?'Obrisan račun':'Obrisana otpremnica');
@@ -6369,13 +6397,120 @@ async function loadRealizacija(){
       nEl.innerHTML=`<div class="card" style="margin-top:1rem"><div style="font-weight:700;margin-bottom:8px"><i class="ti ti-shopping-cart"></i> Narudžbenice ${god}. po dobavljaču</div>`+
         (pr.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px 10px;text-align:left">Dobavljač</th><th style="padding:8px 10px;text-align:right">Narudžbenica</th><th style="padding:8px 10px;text-align:right">Naručeno</th><th style="padding:8px 10px;text-align:right">Fakturirano</th><th style="padding:8px 10px;text-align:right">Plaćeno</th></tr></thead><tbody>`+
         pr.map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">${znEsc(k)}</td><td style="padding:8px 10px;text-align:right">${v.n}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.s)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.f)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.p)}</td></tr>`).join('')+`</tbody></table></div>`:'<div class="empty"><p>Nema odobrenih narudžbenica.</p></div>')+`</div>`;
-      const rn={}; racN.forEach(r=>{const o=rn[r.narudzbenica_id]=rn[r.narudzbenica_id]||{c:0,f:0,p:0}; o.c++; o.f+=fnum(r.iznos_bez_pdv); if(r.placeno) o.p+=fnum(r.iznos_bez_pdv);});
-      nEl.innerHTML+=`<div class="card" style="margin-top:1rem"><div style="font-weight:700;margin-bottom:4px"><i class="ti ti-receipt"></i> Narudžbenice ${god}. — unos računa i plaćanje</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Plaćanje se bilježi na računu. Kliknite "Računi" kod narudžbenice, dodajte račun, pa će se ovdje i gore pojaviti gumb "Plaćeno".</div>`+
-        (nar.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px 10px;text-align:left">Narudžbenica</th><th style="padding:8px 10px;text-align:left">Dobavljač</th><th style="padding:8px 10px;text-align:right">Naručeno</th><th style="padding:8px 10px;text-align:center">Računa</th><th style="padding:8px 10px;text-align:right">Fakturirano</th><th style="padding:8px 10px;text-align:right">Plaćeno</th><th></th></tr></thead><tbody>`+
-        nar.slice().reverse().map(n=>{const o=rn[n.id]||{c:0,f:0,p:0}; return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px"><strong>${znEsc(n.broj||'')}</strong></td><td style="padding:8px 10px">${znEsc(n.dobavljac_naziv||'')}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(n.ukupno_bez_pdv)}</td><td style="padding:8px 10px;text-align:center">${o.c}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(o.f)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(o.p)}</td><td style="padding:8px 10px"><button class="btn bxs bp" onclick="pregledNarudzbenica(${n.id})"><i class="ti ti-receipt"></i> Računi</button></td></tr>`;}).join('')+`</tbody></table></div>`:'<div class="empty"><p>Nema odobrenih narudžbenica</p></div>')+`</div>`;
     }
   }catch(e){uEl.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Jesu li pokrenute SQL skripte faza2b, faza3, faza4 i faza5?</div>`;}
+}
+
+
+// ===== Sigurnosna kopija (samo administrator) =====
+const BACKUP_TABLICE=['narudzbenice','narudzbenice_stavke','narudzbenice_ponude','narudzbenice_racuni','narudzbenice_otpremnice','zahtjevnice','zahtjevnice_stavke','zahtjevi_nabave','zahtjevi_nabave_prilozi','zahtjevi_nabave_aneksi','zahtjevi_nabave_racuni','zahtjevi_nabave_otpremnice','zahtjevi_nabave_pristup','nabava_ovlasti','dobavljaci','plan_nabave','plan_nabave_verzije','nabava_dnevnik','postavke_tvrtke'];
+function setupBackup(){ const el=document.getElementById('bk-st'); if(el) el.textContent=''; }
+async function napraviBackup(saPrilozima){
+  const st=document.getElementById('bk-st'), al=document.getElementById('bk-al'); al.innerHTML='';
+  if(!isAdmin()){ al.innerHTML='<div class="al ald">Samo administrator može napraviti sigurnosnu kopiju.</div>'; return; }
+  const btns=['bk-btn','bk-btn2'].map(i=>document.getElementById(i)); btns.forEach(b=>b.disabled=true);
+  const out={verzija:'nabava-backup-1',napravljeno:new Date().toISOString(),tablice:{},greske:{}};
+  const urls=[];
+  try{
+    for(let i=0;i<BACKUP_TABLICE.length;i++){
+      const t=BACKUP_TABLICE[i]; st.textContent=`Učitavam ${t} (${i+1}/${BACKUP_TABLICE.length})...`;
+      try{ out.tablice[t]=await fetchAllRows(()=>SB.from(t).select('*').order('id')); }
+      catch(e){ try{ out.tablice[t]=await fetchAllRows(()=>SB.from(t).select('*')); }catch(e2){ out.greske[t]=e2.message||String(e2); } }
+      (out.tablice[t]||[]).forEach(r=>{ Object.keys(r).forEach(k=>{ const v=r[k]; if(typeof v==='string'&&/^https?:\/\/.+\/storage\/v1\/object\//.test(v)) urls.push({tablica:t,id:r.id,naziv:r.naziv_datoteke||r.naziv||'',url:v}); }); });
+    }
+    out.prilozi=urls;
+    const d=new Date(), pad=n=>String(n).padStart(2,'0');
+    const ds=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const dl=(name,blob)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); };
+    dl(`nabava-kopija_${ds}.json`,new Blob([JSON.stringify(out,null,1)],{type:'application/json'}));
+    if(saPrilozima){
+      const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+      const csv='\ufeff'+['tablica;id;naziv;url'].concat(urls.map(u=>[u.tablica,u.id,q(u.naziv),u.url].join(';'))).join('\r\n');
+      dl(`nabava-prilozi_${ds}.csv`,new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    }
+    const br=Object.entries(out.tablice).map(([k,v])=>`${k}: ${v.length}`).join(' · ');
+    st.innerHTML=`<strong>Gotovo.</strong> Datoteka je preuzeta (provjeri mapu Preuzimanja). Priloga: ${urls.length}.<div style="margin-top:6px;font-size:12px">${br}</div>`+(Object.keys(out.greske).length?`<div class="al ald" style="margin-top:8px">Nisu učitane tablice: ${Object.keys(out.greske).join(', ')} (vjerojatno još nisu napravljene u bazi).</div>`:'');
+  }catch(e){ al.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message||String(e))}</div>`; st.textContent=''; }
+  btns.forEach(b=>b.disabled=false);
+}
+
+// ===== Obrisano (koš) i vraćanje iz kopije =====
+const KOS_DJECA={zahtjevi_nabave:['zahtjevi_nabave_prilozi','zahtjevi_nabave_aneksi','zahtjevi_nabave_racuni','zahtjevi_nabave_otpremnice','zahtjevi_nabave_pristup']};
+const KOS_FK={zahtjevi_nabave_prilozi:'zahtjev_id',zahtjevi_nabave_aneksi:'zahtjev_id',zahtjevi_nabave_racuni:'zahtjev_id',zahtjevi_nabave_otpremnice:'zahtjev_id',zahtjevi_nabave_pristup:'zahtjev_id'};
+const KOS_NAZIV={zahtjevi_nabave:'Zahtjev za nabavu',zahtjevi_nabave_aneksi:'Aneks ugovora',zahtjevi_nabave_racuni:'Račun (ugovor)',zahtjevi_nabave_otpremnice:'Otpremnica (ugovor)',narudzbenice_racuni:'Račun (narudžbenica)',narudzbenice_otpremnice:'Otpremnica (narudžbenica)',dobavljaci:'Dobavljač',plan_nabave:'Stavka plana'};
+async function kosSnimi(tablica,id,opis){
+  try{
+    const {data:red}=await SB.from(tablica).select('*').eq('id',id).maybeSingle();
+    if(!red) return;
+    const djeca={};
+    for(const t of (KOS_DJECA[tablica]||[])){ const {data}=await SB.from(t).select('*').eq(KOS_FK[t],id); if(data&&data.length) djeca[t]=data; }
+    await SB.from('nabava_kos').insert({tablica,zapis_id:id,opis:opis||'',podaci:red,djeca,obrisao:(CU?.ime||CU?.email||'')});
+  }catch(e){ console.warn('koš:',e); }
+}
+async function setupKos(){
+  const el=document.getElementById('kos-list'), al=document.getElementById('kos-al'); al.innerHTML='';
+  if(!isAdmin()){ el.innerHTML='<div class="empty"><p>Samo administrator.</p></div>'; return; }
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
+  const {data,error}=await SB.from('nabava_kos').select('*').order('id',{ascending:false}).limit(300);
+  if(error){ el.innerHTML=`<div class="al ald">Greška: ${znEsc(error.message)}. Je li pokrenut SQL nabava_kos.sql?</div>`; return; }
+  el.innerHTML=!(data||[]).length?'<div class="empty"><i class="ti ti-trash"></i><p>Nema obrisanih zapisa</p></div>':
+   `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px 10px;text-align:left">Obrisano</th><th style="padding:8px 10px;text-align:left">Vrsta</th><th style="padding:8px 10px;text-align:left">Opis</th><th style="padding:8px 10px;text-align:left">Obrisao</th><th></th></tr></thead><tbody>`+
+   data.map(k=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;white-space:nowrap">${znEsc(String(k.obrisano_at||'').slice(0,16).replace('T',' '))}</td><td style="padding:8px 10px">${znEsc(KOS_NAZIV[k.tablica]||k.tablica)}</td><td style="padding:8px 10px">${znEsc(k.opis||'')}</td><td style="padding:8px 10px">${znEsc(k.obrisao||'')}</td><td style="padding:8px 10px"><button class="btn bxs bp" onclick="kosVrati(${k.id})"><i class="ti ti-arrow-back-up"></i> Vrati</button></td></tr>`).join('')+'</tbody></table></div>';
+}
+async function kosVrati(id){
+  if(!isAdmin()) return;
+  const al=document.getElementById('kos-al');
+  const {data:k}=await SB.from('nabava_kos').select('*').eq('id',id).maybeSingle(); if(!k) return;
+  if(!confirm('Vratiti ovaj zapis?')) return;
+  const {error}=await SB.from(k.tablica).insert(k.podaci);
+  if(error){ al.innerHTML=`<div class="al ald">Ne mogu vratiti: ${znEsc(error.message)}</div>`; return; }
+  for(const [t,rows] of Object.entries(k.djeca||{})){ const r=await SB.from(t).insert(rows); if(r.error) al.innerHTML=`<div class="al ald">Zapis je vraćen, ali dio ${znEsc(t)} nije: ${znEsc(r.error.message)}</div>`; }
+  await SB.from('nabava_kos').delete().eq('id',id);
+  showToast('✅ Vraćeno','success'); setupKos();
+}
+// vraćanje iz kopije: samo zapisi kojih više nema u bazi
+const RESTORE_REDOSLIJED=['dobavljaci','plan_nabave_verzije','plan_nabave','postavke_tvrtke','narudzbenice','narudzbenice_stavke','narudzbenice_ponude','narudzbenice_racuni','narudzbenice_otpremnice','zahtjevnice','zahtjevnice_stavke','zahtjevi_nabave','zahtjevi_nabave_prilozi','zahtjevi_nabave_aneksi','zahtjevi_nabave_racuni','zahtjevi_nabave_otpremnice','zahtjevi_nabave_pristup','nabava_ovlasti','nabava_dnevnik'];
+window._bkMissing=null;
+async function bkPregled(inp){
+  const rs=document.getElementById('bk-rs'); rs.innerHTML='';
+  if(!isAdmin()){ rs.innerHTML='<div class="al ald">Samo administrator.</div>'; return; }
+  const f=inp.files[0]; if(!f) return;
+  let dat; try{ dat=JSON.parse(await f.text()); }catch(e){ rs.innerHTML='<div class="al ald">Datoteka nije ispravna kopija.</div>'; return; }
+  if(!dat||dat.verzija!=='nabava-backup-1'||!dat.tablice){ rs.innerHTML='<div class="al ald">Ovo nije kopija iz ove aplikacije.</div>'; return; }
+  rs.textContent='Uspoređujem s bazom...';
+  const miss={}; let uk=0;
+  try{
+    for(const t of RESTORE_REDOSLIJED){
+      const rows=dat.tablice[t]; if(!rows||!rows.length) continue;
+      let ex; try{ ex=await fetchAllRows(()=>SB.from(t).select('id').order('id')); }catch(e){ continue; }
+      const have=new Set(ex.map(x=>x.id)); const m=rows.filter(r=>r.id!=null&&!have.has(r.id));
+      if(m.length){ miss[t]=m; uk+=m.length; }
+    }
+  }catch(e){ rs.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}</div>`; return; }
+  window._bkMissing=miss;
+  rs.innerHTML=!uk?`<div class="al als">U bazi ne nedostaje ništa u odnosu na kopiju (${znEsc(String(dat.napravljeno||'').slice(0,16).replace('T',' '))}).</div>`:
+    `<div style="font-size:13px;margin-bottom:6px">Kopija od ${znEsc(String(dat.napravljeno||'').slice(0,16).replace('T',' '))}. Nedostaje ukupno <strong>${uk}</strong> zapisa:</div><ul style="font-size:13px;margin:0 0 10px 18px">`+Object.entries(miss).map(([t,r])=>`<li>${znEsc(KOS_NAZIV[t]||t)} <span style="color:var(--text2)">(${t})</span>: ${r.length}</li>`).join('')+`</ul><button class="btn bp" onclick="bkVrati()"><i class="ti ti-arrow-back-up"></i> Vrati nedostajuće zapise</button>`;
+}
+async function bkVrati(){
+  if(!isAdmin()||!window._bkMissing) return;
+  if(!confirm('Vratiti sve zapise koji nedostaju? Postojeći podaci se neće mijenjati.')) return;
+  const rs=document.getElementById('bk-rs'); const miss=window._bkMissing; const izvj=[]; let ok=0;
+  let ostalo=Object.assign({},miss);
+  for(let prolaz=0;prolaz<2;prolaz++){
+    for(const t of RESTORE_REDOSLIJED){
+      const rows=ostalo[t]; if(!rows||!rows.length) continue;
+      rs.textContent=`Vraćam ${t}...`; const neus=[];
+      for(let i=0;i<rows.length;i+=100){
+        const ch=rows.slice(i,i+100); const {error}=await SB.from(t).insert(ch);
+        if(!error){ ok+=ch.length; continue; }
+        for(const r of ch){ const e2=await SB.from(t).insert(r); if(e2.error){ neus.push({r,m:e2.error.message}); } else ok++; }
+      }
+      if(neus.length) ostalo[t]=neus.map(x=>x.r), (ostalo['_g_'+t]=neus[0].m); else delete ostalo[t];
+    }
+  }
+  const gr=Object.keys(ostalo).filter(k=>!k.startsWith('_g_'));
+  window._bkMissing=null; document.getElementById('bk-file').value='';
+  rs.innerHTML=`<div class="al als">Vraćeno zapisa: <strong>${ok}</strong>.</div>`+(gr.length?`<div class="al ald" style="margin-top:8px">Nije vraćeno: ${gr.map(t=>znEsc(t)+' ('+ostalo[t].length+') – '+znEsc(ostalo['_g_'+t]||'')).join('; ')}</div>`:'');
 }
 
 function printZN(){
@@ -6805,6 +6940,7 @@ async function saveDobavljac(){
 
 async function delDobavljac(id,naziv){
   if(!confirm(`Obrisati dobavljača "${naziv}"?`)) return;
+  await kosSnimi('dobavljaci',id,naziv);
   await SB.from('dobavljaci').delete().eq('id',id);
   showToast('✅ Obrisan','success');
   loadDobavljaci();
@@ -7017,6 +7153,7 @@ async function savePlanStavka(){
 
 async function delPlanStavka(id,naziv){
   if(!confirm(`Obrisati stavku plana "${naziv}"?`)) return;
+  await kosSnimi('plan_nabave',id,naziv);
   await SB.from('plan_nabave').delete().eq('id',id);
   showToast('✅ Obrisano','success');
   loadPlanNabave();
