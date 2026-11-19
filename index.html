@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.3-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.3-B</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -6000,16 +6000,19 @@ async function znRealizacijaHtml(z,trenV){
 }
 
 // pratitelj
-function otvoriPratitelja(id){
+async function otvoriPratitelja(id){
   window._znPrat=id;
-  const us=(DB.users||[]).filter(u=>typeof u.id==='string'&&u.id.includes('-'));
+  const {data:kor,error:ke}=await SB.from('korisnici').select('id,name,role').order('name');
+  const us=(kor||[]);
+  window._znKorisnici=us;
+  if(ke) showToast('Greška pri učitavanju korisnika: '+ke.message,'error');
   document.getElementById('zp-sel').innerHTML='<option value="">— odaberi osobu —</option>'+us.map(u=>`<option value="${u.id}">${znEsc(u.name)} (${nazivUloge(u.role)})</option>`).join('');
   closeM('mo-pregled-nab'); openM('mo-zn-prat');
 }
 async function saveZnPratitelj(){
   const id=window._znPrat, uid=document.getElementById('zp-sel').value;
   if(!uid){showToast('Odaberi osobu','error');return;}
-  const u=(DB.users||[]).find(x=>x.id===uid);
+  const u=(window._znKorisnici||[]).find(x=>x.id===uid);
   const {error}=await SB.from('zahtjevi_nabave').update({pratitelj_id:uid,pratitelj_ime:u?.name||null,updated_at:new Date().toISOString()}).eq('id',id);
   if(error){showToast('Greška: '+error.message,'error');return;}
   await logN('zahtjev_nabave',id,await brojDok('zahtjevi_nabave',id),'Dodijeljen pratitelj',u?.name||'');
