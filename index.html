@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.5-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.6-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -799,6 +799,7 @@ select{cursor:pointer}
         <div class="card">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
             <div style="font-weight:700;flex:1;min-width:220px"><i class="ti ti-file-invoice"></i> Računi i plaćanje (ugovori i narudžbenice)</div>
+            <div class="fg" style="min-width:200px;margin:0"><input type="text" id="rz-q" placeholder="Traži broj ugovora / narudžbenice / dobavljača" oninput="clearTimeout(window._rzT);window._rzT=setTimeout(loadRealizacija,300)"></div>
             <div class="fg" style="min-width:170px;margin:0"><select id="rz-fvr" onchange="loadRealizacija()"><option value="">Ugovori i narudžbenice</option><option value="ugovor">Samo ugovori</option><option value="narudzbenica">Samo narudžbenice</option></select></div>
             <div class="fg" style="min-width:170px;margin:0"><select id="rz-fpl" onchange="loadRealizacija()"><option value="">Svi računi</option><option value="neplaceno">Neplaćeni</option><option value="kasni">Kasne s plaćanjem</option><option value="placeno">Plaćeni</option></select></div>
             <button class="btn bs" onclick="resetRzFilter()">Očisti</button>
@@ -6327,7 +6328,7 @@ async function setupRealizacija(){
   await ucitajOvlasti(true);
   await loadRealizacija();
 }
-function resetRzFilter(){['rz-fpl','rz-fvr'].forEach(i=>{const e=document.getElementById(i); if(e) e.value='';}); loadRealizacija();}
+function resetRzFilter(){['rz-fpl','rz-fvr','rz-q'].forEach(i=>{const e=document.getElementById(i); if(e) e.value='';}); loadRealizacija();}
 async function loadRealizacija(){
   const mEl=document.getElementById('rz-metrics'), uEl=document.getElementById('rz-ugovori'), nEl=document.getElementById('rz-nar');
   if(!uEl) return;
@@ -6362,9 +6363,11 @@ async function loadRealizacija(){
     const narUk=nar.reduce((a,n)=>a+fnum(n.ukupno_bez_pdv),0);
     // objedinjeni popis računa
     let rows=[
-      ...racZ.map(r=>({kind:'zn',docId:r.zahtjev_id,doc:znBy[r.zahtjev_id]?.broj||'',tip:'Ugovor',dob:znBy[r.zahtjev_id]?.dobavljac_naziv||'',r})),
+      ...racZ.map(r=>({kind:'zn',docId:r.zahtjev_id,doc:znBy[r.zahtjev_id]?.broj||'',ugBr:znBy[r.zahtjev_id]?.ugovor_broj||'',tip:'Ugovor',dob:znBy[r.zahtjev_id]?.dobavljac_naziv||'',r})),
       ...racN.map(r=>({kind:'nar',docId:r.narudzbenica_id,doc:narBy[r.narudzbenica_id]?.broj||'',tip:'Narudžbenica',dob:narBy[r.narudzbenica_id]?.dobavljac_naziv||'',r}))
     ];
+    const qq=(document.getElementById('rz-q')?.value||'').trim().toLowerCase();
+    if(qq) rows=rows.filter(x=>[x.doc,x.ugBr,x.dob,x.r.broj].some(v=>String(v||'').toLowerCase().includes(qq)));
     if(fvr==='ugovor') rows=rows.filter(x=>x.kind==='zn'); if(fvr==='narudzbenica') rows=rows.filter(x=>x.kind==='nar');
     const fakt=rows.reduce((a,x)=>a+fnum(x.r.iznos_bez_pdv),0), plac=rows.filter(x=>x.r.placeno).reduce((a,x)=>a+fnum(x.r.iznos_bez_pdv),0);
     const kasniN=rows.filter(x=>!x.r.placeno&&x.r.rok_placanja&&x.r.rok_placanja<today).length;
@@ -6383,7 +6386,7 @@ async function loadRealizacija(){
       <th style="padding:8px 10px;text-align:left">Dokument / dobavljač</th><th style="padding:8px 10px;text-align:left">Račun</th><th style="padding:8px 10px">Datum</th><th style="padding:8px 10px;text-align:right">Bez PDV-a</th><th style="padding:8px 10px">Rok plaćanja</th><th style="padding:8px 10px">Plaćanje</th><th style="padding:8px 10px"></th></tr></thead><tbody>`+
       list.map(x=>{const r=x.r, kasni=!r.placeno&&r.rok_placanja&&r.rok_placanja<today;
         const otv=x.kind==='nar'?`pregledNarudzbenica(${x.docId})`:`pregledZN(${x.docId},'ugovor')`;
-        return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px"><strong>${znEsc(x.doc)}</strong> <span style="font-size:11px;color:var(--text2)">${x.tip}</span><div style="font-size:11.5px;color:var(--text2)">${znEsc(x.dob)}</div></td>
+        return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px"><strong>${znEsc(x.kind==='zn'?(x.ugBr||x.doc):x.doc)}</strong> <span style="font-size:11px;color:var(--text2)">${x.tip}${x.kind==='zn'&&x.ugBr?' · '+znEsc(x.doc):''}</span><div style="font-size:11.5px;color:var(--text2)">${znEsc(x.dob)}</div></td>
         <td style="padding:8px 10px"><strong>${znEsc(r.broj||'–')}</strong><div>${znLink(r.url,r.naziv_datoteke)}</div></td><td style="padding:8px 10px;text-align:center">${r.datum||'–'}</td>
         <td style="padding:8px 10px;text-align:right">${fmtEUR(r.iznos_bez_pdv)}</td><td style="padding:8px 10px;text-align:center;${kasni?'color:#c0392b;font-weight:700':''}">${r.rok_placanja||'–'}</td>
         <td style="padding:8px 10px;text-align:center">${r.placeno?`<span class="bdg bgr">Plaćeno ${r.datum_placanja||''}</span>`:`<span class="bdg ${kasni?'bad':'bam'}">${kasni?'Kasni':'Neplaćeno'}</span>`}</td>
