@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v18.11-I</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.0-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -327,6 +327,7 @@ select{cursor:pointer}
         <div class="ni active" onclick="sP('dashboard')" id="nav-dashboard"><i class="ti ti-layout-dashboard"></i> Pregled</div>
         <div class="ni" onclick="sP('zahtjevnice')" id="nav-zahtjevnice"><i class="ti ti-file-description"></i> Zahtjevnice</div>
         <div class="ni" onclick="sP('narudzbenice')" id="nav-narudzbenice"><i class="ti ti-shopping-cart"></i> Narudžbenice</div>
+        <div class="ni" onclick="sP('zahtjevi-nabave')" id="nav-zahtjevi-nabave"><i class="ti ti-file-text"></i> Zahtjevi za nabavu</div>
         <div class="ni" onclick="sP('dobavljaci')" id="nav-dobavljaci"><i class="ti ti-building-store"></i> Dobavljači</div>
         <div class="ni" onclick="sP('plan-nabave')" id="nav-plan-nabave"><i class="ti ti-clipboard-list"></i> Plan nabave</div>
       </div>
@@ -420,7 +421,7 @@ select{cursor:pointer}
         <div class="ph"><div><div class="pt">Dnevnik promjena</div><div class="ps">Evidencija tko je i kada kreirao, mijenjao, poslao, odobrio ili odbio zahtjevnice i narudžbenice (za reviziju)</div></div></div>
         <div class="card">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
-            <div class="fg" style="margin:0"><label class="fl">Vrsta</label><select id="dn-tip" onchange="loadDnevnikNabave()"><option value="">Sve</option><option value="zahtjevnica">Zahtjevnice</option><option value="narudzbenica">Narudžbenice</option></select></div>
+            <div class="fg" style="margin:0"><label class="fl">Vrsta</label><select id="dn-tip" onchange="loadDnevnikNabave()"><option value="">Sve</option><option value="zahtjevnica">Zahtjevnice</option><option value="narudzbenica">Narudžbenice</option><option value="zahtjev_nabave">Zahtjevi za nabavu</option></select></div>
             <div class="fg" style="margin:0"><label class="fl">Broj dokumenta</label><input type="text" id="dn-broj" placeholder="npr. 0012-2026" onkeyup="if(event.key==='Enter')loadDnevnikNabave()"></div>
             <button class="btn bp" onclick="loadDnevnikNabave()">Pretraži</button>
           </div>
@@ -723,6 +724,25 @@ select{cursor:pointer}
           </div>
         </div>
         <div class="card"><div id="zah-list"><div class="empty"><i class="ti ti-file-description"></i><p>Klikni Pretraži</p></div></div></div>
+      </div>
+
+      <!-- ZAHTJEVI ZA NABAVU -->
+      <div class="page" id="page-zahtjevi-nabave">
+        <div class="ph">
+          <div><div class="pt">Zahtjevi za nabavu</div><div class="ps">Nabave iznad 15.000 EUR koje idu kroz postupak u EOJN-u: zahtjev, prilozi i odobrenje direktora</div></div>
+          <button class="btn bp" id="btn-novi-zn" onclick="openNoviZN()"><i class="ti ti-plus"></i> Novi zahtjev za nabavu</button>
+        </div>
+        <div class="card" style="padding:1rem;margin-bottom:1rem">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div class="fg" style="min-width:150px;margin:0"><label class="fl">Status</label>
+              <select id="zn-fst"><option value="">Svi</option><option value="nacrt">Nacrt</option><option value="kod_direktora">Kod direktora</option><option value="odobren">Odobren</option><option value="vracen">Vraćen na doradu</option><option value="odbijen">Odbijen</option></select></div>
+            <div class="fg" style="min-width:200px;margin:0"><label class="fl">Jedinica</label><select id="zn-fj"><option value="">Sve jedinice</option></select></div>
+            <div class="fg" style="min-width:200px;margin:0"><label class="fl">Broj / predmet</label><input type="text" id="zn-fq" placeholder="npr. ZN-001 ili cvijeće" onkeyup="if(event.key==='Enter')loadZahtjeviNabave()"></div>
+            <button class="btn bp" onclick="loadZahtjeviNabave()" style="margin-bottom:1px"><i class="ti ti-search"></i> Pretraži</button>
+            <button class="btn bs" onclick="resetZnFilter()" style="margin-bottom:1px">Očisti</button>
+          </div>
+        </div>
+        <div class="card"><div id="zn-list"><div class="empty"><i class="ti ti-file-text"></i><p>Klikni Pretraži</p></div></div></div>
       </div>
 
       <!-- NARUDŽBENICE -->
@@ -1146,6 +1166,40 @@ select{cursor:pointer}
   </div>
 </div>
 
+<!-- MODAL: Zahtjev za nabavu -->
+<div class="mo" id="mo-zn">
+  <div class="md" style="max-width:820px;width:96%">
+    <div class="mhd">
+      <div class="mtt"><i class="ti ti-file-text"></i> <span id="zn-modal-title">Novi zahtjev za nabavu</span></div>
+      <button class="mcl" onclick="closeM('mo-zn')">✕</button>
+    </div>
+    <div class="mb" style="max-height:78vh;overflow-y:auto">
+      <div id="zn-razlog-box"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="fg" style="margin:0"><label class="fl">Broj</label><input type="text" id="zn-broj" readonly style="font-weight:700"></div>
+        <div class="fg" style="margin:0"><label class="fl">Datum <span class="req">*</span></label><input type="date" id="zn-datum"></div>
+        <div class="fg" style="margin:0"><label class="fl">Vrsta</label><select id="zn-vrsta"><option value="roba">Roba</option><option value="usluga">Usluga</option><option value="radovi">Radovi</option></select></div>
+        <div class="fg" style="margin:0"><label class="fl">Jedinica <span class="req">*</span></label><select id="zn-jed"></select></div>
+      </div>
+      <div class="fg"><label class="fl">Predmet nabave <span class="req">*</span></label><input type="text" id="zn-predmet" placeholder="npr. Sezonsko cvijeće – zimsko"></div>
+      <div class="fg"><label class="fl">Opis</label><textarea id="zn-opis" rows="3" placeholder="Kratki opis što se nabavlja"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="fg" style="margin:0"><label class="fl">Procijenjena vrijednost bez PDV-a (EUR) <span class="req">*</span></label><input type="number" id="zn-vrijednost" min="0" step="0.01"></div>
+        <div class="fg" style="margin:0"><label class="fl">Zatražio/la</label><input type="text" id="zn-zatrazio"></div>
+      </div>
+      <div class="fg"><label class="fl">Obrazloženje</label><textarea id="zn-obraz" rows="3" placeholder="Zašto je nabava potrebna"></textarea></div>
+      <div class="fl" style="margin-bottom:6px">Prilozi</div>
+      <div id="zn-prilozi"></div>
+      <div id="zn-al"></div>
+    </div>
+    <div class="mft">
+      <button class="btn bs" onclick="closeM('mo-zn')">Odustani</button>
+      <button class="btn bs" onclick="saveZN('nacrt')">Spremi nacrt</button>
+      <button class="btn bp" onclick="saveZN('kod_direktora')"><i class="ti ti-send"></i> Pošalji direktoru</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Nova/Uredi Narudžbenica -->
 <div class="mo" id="mo-narudzbenica">
   <div class="md" style="max-width:900px;width:96%">
@@ -1366,7 +1420,10 @@ select{cursor:pointer}
         <div class="fg"><label class="fl">Uloga</label><select id="mur">
       <option value="korisnik">Voditelj jedinice</option>
       <option value="voditelj">Voditelj/rukovoditelj odjela</option>
+      <option value="rukovoditelj">Rukovoditelj</option>
       <option value="nabava">Nabava</option>
+      <option value="javna_nabava">Voditelj javne nabave</option>
+      <option value="racunovodstvo">Računovodstvo</option>
       <option value="direktor">Direktor (odobrava)</option>
       <option value="admin">Administrator</option>
     </select></div>
@@ -1796,7 +1853,7 @@ function sP(n){
   document.querySelectorAll(".ni").forEach(x=>x.classList.remove("active"));
   document.getElementById("page-"+n)?.classList.add("active");
   document.getElementById("nav-"+n)?.classList.add("active");
-  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
+  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,'zahtjevi-nabave':setupZahtjeviNabave,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
 }
 
 function vJ(){
@@ -1856,7 +1913,7 @@ async function rDash(){
 
 // ══ ULOGE I OVLASTI (Nabava) ══════════════════════════════════
 function isAdmin(){return CU?.role==='admin';}
-function nazivUloge(r){return ({admin:'Administrator',direktor:'Direktor',nabava:'Nabava',voditelj:'Voditelj',korisnik:'Korisnik'})[r]||'Korisnik';}
+function nazivUloge(r){return ({admin:'Administrator',direktor:'Direktor',nabava:'Nabava',voditelj:'Voditelj',korisnik:'Korisnik',rukovoditelj:'Rukovoditelj',javna_nabava:'Voditelj javne nabave',racunovodstvo:'Računovodstvo'})[r]||'Korisnik';}
 function seesAllNabava(){return ['admin','nabava','direktor'].includes(CU?.role);}
 function nabJedIds(){
   if(seesAllNabava()) return DB.jedinice.map(j=>j.id);
@@ -2345,7 +2402,7 @@ async function rKor(){
     const[bg,fg]=avC(u.name||'A');
     const isMe=u.id===CU?.id||u.id===SB_USER?.id;
     const isUUID=typeof u.id==='string'&&u.id.includes('-');
-    const ROLE_BDG={admin:'<span class="bdg bgr">Administrator</span>',direktor:'<span class="bdg bam">Direktor</span>',nabava:'<span class="bdg bbl">Nabava</span>',voditelj:'<span class="bdg bgy">Voditelj/rukovoditelj</span>',korisnik:'<span class="bdg bgy">Voditelj</span>'};
+    const ROLE_BDG={admin:'<span class="bdg bgr">Administrator</span>',direktor:'<span class="bdg bam">Direktor</span>',nabava:'<span class="bdg bbl">Nabava</span>',voditelj:'<span class="bdg bgy">Voditelj/rukovoditelj</span>',korisnik:'<span class="bdg bgy">Voditelj</span>',rukovoditelj:'<span class="bdg bgy">Rukovoditelj</span>',javna_nabava:'<span class="bdg bbl">Voditelj javne nabave</span>',racunovodstvo:'<span class="bdg bbl">Računovodstvo</span>'};
     const roleBdg=ROLE_BDG[u.role]||'<span class="bdg bgy">Voditelj</span>';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:11px">
@@ -5380,7 +5437,7 @@ async function loadDnevnikNabave(){
   if(!data||!data.length){out.innerHTML='<div style="color:var(--text2)">Nema zapisa.</div>';return;}
   out.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--bg3)">
     <th style="padding:7px 8px;text-align:left">Vrijeme</th><th style="padding:7px 8px;text-align:left">Korisnik</th><th style="padding:7px 8px;text-align:left">Dokument</th><th style="padding:7px 8px;text-align:left">Radnja</th><th style="padding:7px 8px;text-align:left">Detalji</th></tr></thead><tbody>`+
-    data.map(r=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">${new Date(r.created_at).toLocaleString('hr-HR')}</td><td style="padding:6px 8px">${r.korisnik||''}</td><td style="padding:6px 8px">${r.tip==='zahtjevnica'?'Zahtjevnica':'Narudžbenica'} ${r.dok_broj||''}</td><td style="padding:6px 8px;font-weight:600">${r.akcija}</td><td style="padding:6px 8px;color:var(--text2)">${r.detalji||''}</td></tr>`).join('')+
+    data.map(r=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">${new Date(r.created_at).toLocaleString('hr-HR')}</td><td style="padding:6px 8px">${r.korisnik||''}</td><td style="padding:6px 8px">${r.tip==='zahtjevnica'?'Zahtjevnica':(r.tip==='zahtjev_nabave'?'Zahtjev za nabavu':'Narudžbenica')} ${r.dok_broj||''}</td><td style="padding:6px 8px;font-weight:600">${r.akcija}</td><td style="padding:6px 8px;color:var(--text2)">${r.detalji||''}</td></tr>`).join('')+
     `</tbody></table></div>`;
 }
 // Kontrolni kod odobrene narudžbenice (otisak sadržaja): otkriva izmjene nakon odobrenja
@@ -5390,6 +5447,293 @@ async function narKod(n,stavke){
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
   const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
   return hex.slice(0,16).replace(/(.{4})/g,'$1-').slice(0,-1);
+}
+
+// ══ ZAHTJEVI ZA NABAVU (faza 1) ═══════════════════════════════
+const ZN_STATUS={
+  nacrt:{lbl:'Nacrt',cls:'bdg bgy'},
+  kod_direktora:{lbl:'Kod direktora',cls:'bdg bam'},
+  odobren:{lbl:'Odobren',cls:'bdg bgr'},
+  vracen:{lbl:'Vraćen na doradu',cls:'bdg bam'},
+  odbijen:{lbl:'Odbijen',cls:'bdg bad'}
+};
+const ZN_PRIL_TIP={troskovnik:'Troškovnik (Excel)',specifikacije:'Tehničke specifikacije (Word)',ostalo:'Ostali prilozi'};
+function znEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function canCreateZN(){return ['admin','direktor','javna_nabava','voditelj','korisnik','rukovoditelj'].includes(CU?.role);}
+function seesAllZN(){return ['admin','direktor','javna_nabava','nabava','racunovodstvo'].includes(CU?.role);}
+function znSmijeUrediti(z){
+  if(!z||!['nacrt','vracen'].includes(z.status)) return false;
+  return z.created_by===SB_USER?.id||['admin','javna_nabava'].includes(CU?.role);
+}
+async function nextZnBroj(god){
+  const {data}=await SB.from('zahtjevi_nabave').select('broj').eq('godina',god).order('id',{ascending:false}).limit(1);
+  let last=0; if(data&&data.length){const m=/ZN-(\d+)/.exec(data[0].broj); last=m?parseInt(m[1]):0;}
+  return 'ZN-'+String(last+1).padStart(3,'0')+'/'+String(god).slice(-2);
+}
+function znJedinice(){
+  const ids=seesAllZN()?DB.jedinice.map(j=>j.id):nabJedIds();
+  return DB.jedinice.filter(j=>ids.includes(j.id));
+}
+const fmtEUR=v=>(v==null||v==='')?'–':parseFloat(v).toLocaleString('hr-HR',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';
+
+async function setupZahtjeviNabave(){
+  const b=document.getElementById('btn-novi-zn'); if(b) b.style.display=canCreateZN()?'':'none';
+  const el=document.getElementById('zn-fj');
+  if(el) el.innerHTML='<option value="">Sve jedinice</option>'+znJedinice().map(j=>`<option value="${j.id}">${znEsc(j.name)}</option>`).join('');
+  await loadZahtjeviNabave();
+}
+
+async function loadZahtjeviNabave(){
+  const el=document.getElementById('zn-list'); if(!el) return;
+  const st=document.getElementById('zn-fst')?.value||'', jid=document.getElementById('zn-fj')?.value||'';
+  const qtxt=(document.getElementById('zn-fq')?.value||'').trim();
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
+  try{
+    let q=SB.from('zahtjevi_nabave').select('*').eq('godina',window.AKTIVNA_GODINA).order('id',{ascending:false});
+    if(st) q=q.eq('status',st);
+    if(jid) q=q.eq('jedinica_id',parseInt(jid));
+    if(qtxt) q=q.or(`broj.ilike.%${qtxt}%,predmet.ilike.%${qtxt}%`);
+    if(!seesAllZN()){
+      const ids=nabJedIds(), uid=SB_USER?.id, parts=[];
+      if(ids.length) parts.push(`jedinica_id.in.(${ids.join(',')})`);
+      if(uid) parts.push(`created_by.eq.${uid}`);
+      q=parts.length?q.or(parts.join(',')):q.eq('id',-1);
+    }
+    const {data,error}=await q;
+    if(error) throw error;
+    if(!data||!data.length){el.innerHTML='<div class="empty"><i class="ti ti-file-text"></i><p>Nema zahtjeva za nabavu za odabrane filtere</p></div>';return;}
+    el.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:var(--bg3)">
+        <th style="padding:8px 10px;text-align:left">Broj</th><th style="padding:8px 10px">Datum</th>
+        <th style="padding:8px 10px;text-align:left">Predmet nabave</th><th style="padding:8px 10px;text-align:left">Jedinica</th>
+        <th style="padding:8px 10px;text-align:right">Procijenjena vrijednost</th><th style="padding:8px 10px">Status</th><th style="padding:8px 10px">Akcije</th>
+      </tr></thead><tbody>`+data.map(z=>{
+        const s=ZN_STATUS[z.status]||{lbl:z.status,cls:'bdg bgy'};
+        const jn=DB.jedinice.find(j=>j.id===z.jedinica_id)?.name||'–';
+        return `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px 10px;font-weight:700;white-space:nowrap">${znEsc(z.broj)}</td>
+          <td style="padding:8px 10px;text-align:center;white-space:nowrap">${z.datum}</td>
+          <td style="padding:8px 10px">${znEsc(z.predmet)}</td>
+          <td style="padding:8px 10px">${znEsc(jn)}</td>
+          <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fmtEUR(z.procijenjena_vrijednost)}</td>
+          <td style="padding:8px 10px;text-align:center"><span class="${s.cls}">${s.lbl}</span></td>
+          <td style="padding:8px 10px"><div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn bsm bs" onclick="pregledZN(${z.id})"><i class="ti ti-eye"></i> Pregled</button>
+            ${znSmijeUrediti(z)?`<button class="btn bsm bs" onclick="editZN(${z.id})"><i class="ti ti-edit"></i>${z.status==='vracen'?' Doradi':''}</button>`:''}
+            ${(z.status==='kod_direktora'&&canApprove())?`<button class="btn bsm bp" onclick="pregledZN(${z.id})"><i class="ti ti-check"></i> Odluka</button>`:''}
+          </div></td></tr>`;
+      }).join('')+`</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Je li pokrenut SQL zahtjevi_nabave.sql u Supabaseu?</div>`;}
+}
+function resetZnFilter(){['zn-fst','zn-fj','zn-fq'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});loadZahtjeviNabave();}
+
+// ── Obrazac ──
+function znFillForm(z){
+  const jeds=znJedinice();
+  document.getElementById('zn-jed').innerHTML=jeds.map(j=>`<option value="${j.id}" ${z&&z.jedinica_id===j.id?'selected':''}>${znEsc(j.name)}</option>`).join('');
+  document.getElementById('zn-datum').value=z?z.datum:zadaniDatumZaAktivnuGodinu();
+  document.getElementById('zn-vrsta').value=z?(z.vrsta||'roba'):'roba';
+  document.getElementById('zn-predmet').value=z?z.predmet:'';
+  document.getElementById('zn-opis').value=z?(z.opis||''):'';
+  document.getElementById('zn-vrijednost').value=z&&z.procijenjena_vrijednost!=null?z.procijenjena_vrijednost:'';
+  document.getElementById('zn-zatrazio').value=z?(z.zatrazio_ime||''):(CU?.name||'');
+  document.getElementById('zn-obraz').value=z?(z.obrazlozenje||''):'';
+  document.getElementById('zn-al').innerHTML='';
+}
+async function openNoviZN(){
+  window._znEdit=null; window._znPril=[]; window._znUkloni=[];
+  document.getElementById('zn-modal-title').textContent='Novi zahtjev za nabavu';
+  document.getElementById('zn-broj').value=await nextZnBroj(window.AKTIVNA_GODINA);
+  znFillForm(null); renderZnPrilozi(); openM('mo-zn');
+}
+async function editZN(id){
+  const {data:z}=await SB.from('zahtjevi_nabave').select('*').eq('id',id).single();
+  const {data:pr}=await SB.from('zahtjevi_nabave_prilozi').select('*').eq('zahtjev_id',id).order('id');
+  if(!z) return;
+  window._znEdit=id; window._znUkloni=[];
+  window._znPril=(pr||[]).map(p=>({id:p.id,tip:p.tip,naziv:p.naziv,url:p.url}));
+  document.getElementById('zn-modal-title').textContent=(z.status==='vracen'?'Dorada zahtjeva ':'Uredi zahtjev ')+z.broj;
+  document.getElementById('zn-broj').value=z.broj;
+  znFillForm(z);
+  const rz=document.getElementById('zn-razlog-box');
+  if(rz) rz.innerHTML=(z.status==='vracen'&&z.razlog_direktora)?`<div class="al ald" style="margin-bottom:10px"><strong>Direktor vraća na doradu:</strong> ${znEsc(z.razlog_direktora)}</div>`:'';
+  renderZnPrilozi(); openM('mo-zn');
+}
+function renderZnPrilozi(){
+  const wrap=document.getElementById('zn-prilozi'); if(!wrap) return;
+  const acc={troskovnik:'.xlsx,.xls,.csv',specifikacije:'.docx,.doc,.pdf',ostalo:''};
+  wrap.innerHTML=Object.keys(ZN_PRIL_TIP).map(t=>{
+    const items=(window._znPril||[]).map((p,i)=>({p,i})).filter(x=>x.p.tip===t);
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+      <div style="font-weight:600;font-size:12.5px;margin-bottom:6px">${ZN_PRIL_TIP[t]}</div>
+      ${items.map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0">
+        <i class="ti ti-paperclip"></i><span style="flex:1;word-break:break-all">${znEsc(x.p.naziv)}${x.p.file?' <span style="color:var(--text2)">(novo)</span>':''}</span>
+        <button onclick="znUkloniPrilog(${x.i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:18px;line-height:1" title="Ukloni">×</button></div>`).join('')}
+      <input type="file" multiple ${acc[t]?`accept="${acc[t]}"`:''} onchange="znPick('${t}',this)" style="font-size:12px">
+    </div>`;
+  }).join('');
+}
+function znPick(tip,input){
+  Array.from(input.files||[]).forEach(f=>window._znPril.push({tip,naziv:f.name,file:f}));
+  input.value=''; renderZnPrilozi();
+}
+function znUkloniPrilog(i){
+  const p=window._znPril[i]; if(!p) return;
+  if(p.id) window._znUkloni.push(p.id);
+  window._znPril.splice(i,1); renderZnPrilozi();
+}
+
+async function saveZN(status){
+  const al=document.getElementById('zn-al');
+  const broj=document.getElementById('zn-broj').value.trim();
+  const datum=document.getElementById('zn-datum').value;
+  const predmet=document.getElementById('zn-predmet').value.trim();
+  const vrijednost=parseFloat(document.getElementById('zn-vrijednost').value);
+  const jid=parseInt(document.getElementById('zn-jed').value)||null;
+  if(!datum||!predmet){al.innerHTML='<div class="al ald">Datum i predmet nabave su obavezni!</div>';return;}
+  if(status==='kod_direktora'){
+    if(!(vrijednost>0)){al.innerHTML='<div class="al ald">Za slanje direktoru upiši procijenjenu vrijednost.</div>';return;}
+    if(!jid){al.innerHTML='<div class="al ald">Odaberi jedinicu.</div>';return;}
+  }
+  al.innerHTML='<div class="al ali"><i class="ti ti-loader-2"></i> Snimanje...</div>';
+  try{
+    const god=parseInt(datum.split('-')[0]);
+    const payload={broj,godina:god,datum,jedinica_id:jid,vrsta:document.getElementById('zn-vrsta').value,predmet,
+      opis:document.getElementById('zn-opis').value.trim(),procijenjena_vrijednost:isNaN(vrijednost)?null:vrijednost,
+      obrazlozenje:document.getElementById('zn-obraz').value.trim(),zatrazio_ime:document.getElementById('zn-zatrazio').value.trim(),
+      status,updated_at:new Date().toISOString()};
+    let id=window._znEdit;
+    if(id){ const {error}=await SB.from('zahtjevi_nabave').update(payload).eq('id',id); if(error) throw error; }
+    else { payload.created_by=SB_USER?.id; const {data,error}=await SB.from('zahtjevi_nabave').insert(payload).select().single(); if(error) throw error; id=data.id; }
+    if(window._znUkloni.length) await SB.from('zahtjevi_nabave_prilozi').delete().in('id',window._znUkloni);
+    let neuspjeli=[];
+    for(const p of window._znPril.filter(x=>x.file)){
+      const safe=p.naziv.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path=`zn/${broj.replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}_${safe}`;
+      const {error:ue}=await SB.storage.from('ponude').upload(path,p.file,{upsert:true});
+      if(ue){neuspjeli.push(p.naziv);continue;}
+      const url=SB.storage.from('ponude').getPublicUrl(path).data?.publicUrl||'';
+      await SB.from('zahtjevi_nabave_prilozi').insert({zahtjev_id:id,tip:p.tip,naziv:p.naziv,url,uploaded_by:SB_USER?.id});
+    }
+    const vecBilo=!!window._znEdit;
+    await logN('zahtjev_nabave',id,broj,status==='kod_direktora'?(vecBilo?'Ponovno poslan direktoru':'Poslan direktoru'):(vecBilo?'Izmijenjen':'Kreiran'));
+    closeM('mo-zn');
+    showToast(neuspjeli.length?('⚠️ Zahtjev spremljen, ali prilozi nisu učitani: '+neuspjeli.join(', ')):(status==='kod_direktora'?'✅ Zahtjev poslan direktoru!':'✅ Zahtjev snimljen!'),neuspjeli.length?'error':'success');
+    loadZahtjeviNabave();
+  }catch(e){al.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}</div>`;}
+}
+
+// ── Kontrolni kod odobrenog zahtjeva ──
+async function znKod(z,pr){
+  const t=[z.broj,z.datum,z.predmet,parseFloat(z.procijenjena_vrijednost||0).toFixed(2),z.odobrio_ime||'',z.datum_odobrenja||'']
+    .concat((pr||[]).map(p=>p.tip+'~'+p.naziv).sort()).join('|');
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+  const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  return hex.slice(0,16).replace(/(.{4})/g,'$1-').slice(0,-1);
+}
+
+// ── Pregled i odluka ──
+async function pregledZN(id){
+  const {data:z}=await SB.from('zahtjevi_nabave').select('*').eq('id',id).single();
+  const {data:pr}=await SB.from('zahtjevi_nabave_prilozi').select('*').eq('zahtjev_id',id).order('id');
+  if(!z) return;
+  const pt=window.POSTAVKE_TVRTKE||await loadPostavkeTvrtkeGlobal()||{};
+  const s=ZN_STATUS[z.status]||{lbl:z.status,cls:'bdg bgy'};
+  const jn=DB.jedinice.find(j=>j.id===z.jedinica_id)?.name||'–';
+  document.getElementById('pregled-nab-title').textContent='Zahtjev za nabavu '+z.broj;
+  window.__NAR_PRINT_TITLE='Zahtjev za nabavu '+z.broj;
+  let kodHtml='';
+  if(z.status==='odobren'&&z.kontrolni_kod){
+    const ok=(await znKod(z,pr))===z.kontrolni_kod;
+    kodHtml=`<div style="margin-top:10px;font-size:11.5px;color:var(--text2)">Kontrolni kod: <strong style="font-family:monospace">${z.kontrolni_kod}</strong> &nbsp;${ok?'<span style="color:#22863a">✔ sadržaj nije mijenjan nakon odobrenja</span>':'<span style="color:#c0392b">⚠ sadržaj ili prilozi razlikuju se od odobrenog</span>'}</div>`;
+  }
+  const prHtml=Object.keys(ZN_PRIL_TIP).map(t=>{
+    const it=(pr||[]).filter(p=>p.tip===t); if(!it.length) return '';
+    return `<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--text2)">${ZN_PRIL_TIP[t]}</div>`+
+      it.map(p=>`<div style="font-size:12.5px"><a href="${znEsc(p.url)}?download=${encodeURIComponent(p.naziv||'prilog')}" target="_blank" download="${znEsc(p.naziv||'prilog')}"><i class="ti ti-paperclip"></i> ${znEsc(p.naziv)}</a></div>`).join('')+`</div>`;
+  }).join('')||'<div style="font-size:12.5px;color:var(--text2)">Nema priloga</div>';
+  document.getElementById('pregled-nab-content').innerHTML=`<div class="nar-paper"><div id="zn-doc">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:12px;margin-bottom:12px;border-bottom:2px solid #00b38a">
+      <img src="${NAR_LOGO}" alt="Parkovi i nasadi" style="height:70px;width:auto;flex:none">
+      <div style="flex:1"><div style="font-weight:700">${znEsc(pt.naziv||'PARKOVI I NASADI d.o.o.')}</div>
+        <div style="font-size:12px">${znEsc(pt.adresa||'Bilice II 46D, 21000 Split')}</div><div style="font-size:12px">OIB: ${znEsc(pt.oib||'64789478164')}</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:800;color:var(--blue)">Zahtjev za nabavu</div>
+        <div style="font-size:18px;font-weight:700">${znEsc(z.broj)}</div><div style="font-size:12px;color:var(--text2)">Datum: ${z.datum}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><div style="font-size:11px;color:var(--text2)">Jedinica</div><strong>${znEsc(jn)}</strong></div>
+      <div><div style="font-size:11px;color:var(--text2)">Zatražio/la</div><strong>${znEsc(z.zatrazio_ime||'–')}</strong></div>
+      <div><div style="font-size:11px;color:var(--text2)">Vrsta</div>${VRSTA_LBL[z.vrsta]||z.vrsta}</div>
+      <div><div style="font-size:11px;color:var(--text2)">Procijenjena vrijednost (bez PDV-a)</div><strong>${fmtEUR(z.procijenjena_vrijednost)}</strong></div>
+    </div>
+    <div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2)">Predmet nabave</div><div style="font-weight:700;font-size:15px">${znEsc(z.predmet)}</div></div>
+    ${z.opis?`<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2)">Opis</div><div style="white-space:pre-wrap">${znEsc(z.opis)}</div></div>`:''}
+    ${z.obrazlozenje?`<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2)">Obrazloženje</div><div style="white-space:pre-wrap">${znEsc(z.obrazlozenje)}</div></div>`:''}
+    <div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2);margin-bottom:3px">Prilozi</div>${prHtml}</div>
+    <div style="padding:8px 10px;background:var(--bg3);border-radius:6px;font-size:12.5px">Status: <span class="${s.cls}">${s.lbl}</span>
+      ${z.odobrio_ime&&z.status==='odobren'?` &nbsp;|&nbsp; <strong>Odobrio:</strong> ${znEsc(z.odobrio_ime)}, ${z.datum_odobrenja?new Date(z.datum_odobrenja).toLocaleString('hr-HR'):''}`:''}
+      ${z.razlog_direktora&&['vracen','odbijen'].includes(z.status)?`<div style="margin-top:6px"><strong>Razlog:</strong> ${znEsc(z.razlog_direktora)}</div>`:''}</div>
+    ${kodHtml}
+    ${z.status==='odobren'?'<div style="margin-top:10px;font-size:11.5px;color:var(--text2)">Dokument je izrađen i odobren elektroničkim putem u sustavu nabave te vrijedi bez potpisa.</div>':''}
+  </div></div>`;
+  let a=`<button class="btn bs" onclick="closeM('mo-pregled-nab')">Zatvori</button>`;
+  a+=`<button class="btn bs" onclick="printZN()"><i class="ti ti-printer"></i> Ispis</button>`;
+  if(znSmijeUrediti(z)) a+=`<button class="btn bp" onclick="closeM('mo-pregled-nab');editZN(${id})"><i class="ti ti-edit"></i> ${z.status==='vracen'?'Doradi i ponovno pošalji':'Uredi'}</button>`;
+  if(z.status==='nacrt'&&(z.created_by===SB_USER?.id||isAdmin())) a+=`<button class="btn bd" onclick="obrisiZN(${id})"><i class="ti ti-trash"></i> Obriši nacrt</button>`;
+  if(z.status==='kod_direktora'&&canApprove()){
+    a+=`<button class="btn bd" onclick="znOdluka(${id},'odbij')"><i class="ti ti-x"></i> Odbij</button>`;
+    a+=`<button class="btn bs" onclick="znOdluka(${id},'vrati')"><i class="ti ti-arrow-back-up"></i> Vrati na doradu</button>`;
+    a+=`<button class="btn bp" onclick="znOdluka(${id},'odobri')"><i class="ti ti-check"></i> Odobri</button>`;
+  }
+  document.getElementById('pregled-nab-actions').innerHTML=a;
+  openM('mo-pregled-nab');
+}
+
+async function znOdluka(id,tip){
+  const {data:z}=await SB.from('zahtjevi_nabave').select('*').eq('id',id).single();
+  if(!z||z.status!=='kod_direktora'){showToast('Zahtjev više nije kod direktora','error');closeM('mo-pregled-nab');loadZahtjeviNabave();return;}
+  const now=new Date().toISOString();
+  if(tip==='odobri'){
+    const {data:u,error}=await SB.from('zahtjevi_nabave').update({status:'odobren',odobrio_ime:CU?.name||'Direktor',datum_odobrenja:now,razlog_direktora:null,updated_at:now}).eq('id',id).select().single();
+    if(error){showToast('Greška: '+error.message,'error');return;}
+    const {data:pr}=await SB.from('zahtjevi_nabave_prilozi').select('tip,naziv').eq('zahtjev_id',id);
+    await SB.from('zahtjevi_nabave').update({kontrolni_kod:await znKod(u,pr)}).eq('id',id);
+    await logN('zahtjev_nabave',id,z.broj,'Odobren');
+    showToast('✅ Zahtjev odobren','success');
+  } else {
+    const razlog=prompt(tip==='vrati'?'Što treba doraditi?':'Razlog odbijanja:');
+    if(razlog===null) return;
+    if(!razlog.trim()){showToast('Razlog je obavezan','error');return;}
+    await SB.from('zahtjevi_nabave').update({status:tip==='vrati'?'vracen':'odbijen',razlog_direktora:razlog.trim(),updated_at:now}).eq('id',id);
+    await logN('zahtjev_nabave',id,z.broj,tip==='vrati'?'Vraćen na doradu':'Odbijen',razlog.trim());
+    showToast(tip==='vrati'?'Zahtjev vraćen na doradu':'Zahtjev odbijen','info');
+  }
+  closeM('mo-pregled-nab'); loadZahtjeviNabave();
+}
+async function obrisiZN(id){
+  if(!confirm('Obrisati ovaj nacrt zahtjeva?')) return;
+  const broj=await brojDok('zahtjevi_nabave',id);
+  const {error}=await SB.from('zahtjevi_nabave').delete().eq('id',id);
+  if(error){showToast('Greška: '+error.message,'error');return;}
+  await logN('zahtjev_nabave',id,broj,'Obrisan nacrt');
+  closeM('mo-pregled-nab'); loadZahtjeviNabave();
+}
+function printZN(){
+  const doc=document.getElementById('zn-doc'); if(!doc) return;
+  const old=document.getElementById('nar-print-frame'); if(old) old.remove();
+  const fr=document.createElement('iframe'); fr.id='nar-print-frame';
+  fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  const d=fr.contentWindow.document; d.open();
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${znEsc(window.__NAR_PRINT_TITLE||'Zahtjev za nabavu')}</title><style>
+    :root{--border:#cfcdc5;--bg3:#eceae4;--text1:#1c1b18;--text2:#58574f;--text3:#77756d;--blue:#1a5fa8}
+    @page{size:A4;margin:0} *{box-sizing:border-box}
+    html,body{margin:0;background:#fff;color:#1c1b18;font-family:Arial,Helvetica,sans-serif;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{padding:14mm 14mm 12mm} a{color:#1c1b18;text-decoration:none}
+  </style></head><body>${doc.innerHTML}</body></html>`);
+  d.close();
+  const go=()=>{try{fr.contentWindow.focus();fr.contentWindow.print();}catch(e){window.print();}};
+  const img=d.querySelector('img'); if(img&&!img.complete){img.onload=go;img.onerror=go;} else setTimeout(go,150);
 }
 
 // ══ DODJELA STAVKI PLANA NABAVE (po stavkama narudžbenice) ═════════
