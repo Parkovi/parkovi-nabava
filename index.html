@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.2-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v19.2-B</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -6325,7 +6325,9 @@ async function delDobavljac(id,naziv){
 
 function openM(id){document.getElementById(id).classList.add("open");}
 function closeM(id){document.getElementById(id).classList.remove("open");}
-document.addEventListener("click",e=>{if(e.target.classList.contains("mo"))e.target.classList.remove("open");});
+let _moDown=null;
+document.addEventListener("mousedown",e=>{_moDown=e.target;});
+document.addEventListener("click",e=>{if(e.target.classList.contains("mo")&&_moDown===e.target)e.target.classList.remove("open");});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".mo.open").forEach(m=>m.classList.remove("open"));});
 
 // ══ PLAN NABAVE ═══════════════════════════════════════════════
