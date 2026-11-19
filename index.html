@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.2-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.3-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -6369,6 +6369,11 @@ async function loadRealizacija(){
       nEl.innerHTML=`<div class="card" style="margin-top:1rem"><div style="font-weight:700;margin-bottom:8px"><i class="ti ti-shopping-cart"></i> Narudžbenice ${god}. po dobavljaču</div>`+
         (pr.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px 10px;text-align:left">Dobavljač</th><th style="padding:8px 10px;text-align:right">Narudžbenica</th><th style="padding:8px 10px;text-align:right">Naručeno</th><th style="padding:8px 10px;text-align:right">Fakturirano</th><th style="padding:8px 10px;text-align:right">Plaćeno</th></tr></thead><tbody>`+
         pr.map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px">${znEsc(k)}</td><td style="padding:8px 10px;text-align:right">${v.n}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.s)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.f)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(v.p)}</td></tr>`).join('')+`</tbody></table></div>`:'<div class="empty"><p>Nema odobrenih narudžbenica.</p></div>')+`</div>`;
+      const rn={}; racN.forEach(r=>{const o=rn[r.narudzbenica_id]=rn[r.narudzbenica_id]||{c:0,f:0,p:0}; o.c++; o.f+=fnum(r.iznos_bez_pdv); if(r.placeno) o.p+=fnum(r.iznos_bez_pdv);});
+      nEl.innerHTML+=`<div class="card" style="margin-top:1rem"><div style="font-weight:700;margin-bottom:4px"><i class="ti ti-receipt"></i> Narudžbenice ${god}. — unos računa i plaćanje</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Plaćanje se bilježi na računu. Kliknite "Računi" kod narudžbenice, dodajte račun, pa će se ovdje i gore pojaviti gumb "Plaćeno".</div>`+
+        (nar.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="padding:8px 10px;text-align:left">Narudžbenica</th><th style="padding:8px 10px;text-align:left">Dobavljač</th><th style="padding:8px 10px;text-align:right">Naručeno</th><th style="padding:8px 10px;text-align:center">Računa</th><th style="padding:8px 10px;text-align:right">Fakturirano</th><th style="padding:8px 10px;text-align:right">Plaćeno</th><th></th></tr></thead><tbody>`+
+        nar.slice().reverse().map(n=>{const o=rn[n.id]||{c:0,f:0,p:0}; return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px"><strong>${znEsc(n.broj||'')}</strong></td><td style="padding:8px 10px">${znEsc(n.dobavljac_naziv||'')}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(n.ukupno_bez_pdv)}</td><td style="padding:8px 10px;text-align:center">${o.c}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(o.f)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(o.p)}</td><td style="padding:8px 10px"><button class="btn bxs bp" onclick="pregledNarudzbenica(${n.id})"><i class="ti ti-receipt"></i> Računi</button></td></tr>`;}).join('')+`</tbody></table></div>`:'<div class="empty"><p>Nema odobrenih narudžbenica</p></div>')+`</div>`;
     }
   }catch(e){uEl.innerHTML=`<div class="al ald">Greška: ${znEsc(e.message)}. Jesu li pokrenute SQL skripte faza2b, faza3, faza4 i faza5?</div>`;}
 }
