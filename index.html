@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.6-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.7-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -332,6 +332,7 @@ select{cursor:pointer}
         <div class="ni" onclick="sP('realizacija')" id="nav-realizacija"><i class="ti ti-chart-bar"></i> Realizacija</div>
         <div class="ni" onclick="sP('dobavljaci')" id="nav-dobavljaci"><i class="ti ti-building-store"></i> Dobavljači</div>
         <div class="ni" onclick="sP('plan-nabave')" id="nav-plan-nabave"><i class="ti ti-clipboard-list"></i> Plan nabave</div>
+        <div class="ni" onclick="sP('registar')" id="nav-registar"><i class="ti ti-table"></i> Registar po planu</div>
       </div>
       <div class="sg" id="anav" style="display:none">
         <div class="sgl">Administracija</div>
@@ -850,6 +851,19 @@ select{cursor:pointer}
       </div>
 
       <!-- PLAN NABAVE -->
+      <div class="page" id="page-registar">
+        <div class="ph"><div><div class="pt">Registar po planu</div><div class="ps">Gore planske grupe (procijenjeno i realizirano), dolje narudžbenice i ugovori s iznosom u grupi kojoj pripadaju</div></div>
+          <div class="phr"><button class="btn bs" onclick="registarCSV()"><i class="ti ti-download"></i> Preuzmi (CSV za Excel)</button></div></div>
+        <div class="card" style="padding:1rem;margin-bottom:1rem">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div class="fg" style="margin:0"><label class="fl">Verzija plana</label><select id="rg-v" onchange="loadRegistar()"></select></div>
+            <div class="fg" style="margin:0;min-width:220px"><label class="fl">Traži</label><input type="text" id="rg-q" placeholder="Broj, dobavljač..." oninput="clearTimeout(window._rgT);window._rgT=setTimeout(loadRegistar,250)"></div>
+            <div class="fg" style="margin:0"><label class="fl">Prikaži</label><select id="rg-t" onchange="loadRegistar()"><option value="">Narudžbenice i ugovori</option><option value="nar">Samo narudžbenice</option><option value="ugovor">Samo ugovori</option></select></div>
+            <label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:8px"><input type="checkbox" id="rg-s" checked onchange="loadRegistar()"> Samo grupe s realizacijom</label>
+          </div>
+        </div>
+        <div class="card" style="padding:0"><div id="rg-tab" style="overflow:auto;max-height:75vh"></div></div>
+      </div>
       <div class="page" id="page-plan-nabave">
         <div class="ph">
           <div><div class="pt">Plan nabave</div><div class="ps">Godišnji plan i praćenje realizacije</div></div>
@@ -2028,7 +2042,7 @@ function sP(n){
   document.querySelectorAll(".ni").forEach(x=>x.classList.remove("active"));
   document.getElementById("page-"+n)?.classList.add("active");
   document.getElementById("nav-"+n)?.classList.add("active");
-  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,'zahtjevi-nabave':setupZahtjeviNabave,ugovori:setupUgovori,realizacija:setupRealizacija,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'sigurnosna-kopija':setupBackup,obrisano:setupKos,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave})[n]?.();
+  ({dashboard:rDash,unos:setupUnos,pregled:setupPre,djelatnici:setupDjel,raspored:setupRasp,org:rOrg,vrste:rVrste,korisnici:rKor,izvjestaj:setupIzv,ispis:setupIspis,bolovanje:setupBolovanje,audit:setupAudit,stimulacije:setupStimulacije,zahtjevnice:setupZahtjevnice,'zahtjevi-nabave':setupZahtjeviNabave,ugovori:setupUgovori,realizacija:setupRealizacija,narudzbenice:setupNarudzbenice,dobavljaci:setupDobavljaci,'postavke-tvrtke':setupPostavkeTvrtke,'sigurnosna-kopija':setupBackup,obrisano:setupKos,'dnevnik-nabave':loadDnevnikNabave,'plan-nabave':setupPlanNabave,registar:setupRegistar})[n]?.();
 }
 
 function vJ(){
@@ -6516,6 +6530,73 @@ async function bkVrati(){
   rs.innerHTML=`<div class="al als">Vraćeno zapisa: <strong>${ok}</strong>.</div>`+(gr.length?`<div class="al ald" style="margin-top:8px">Nije vraćeno: ${gr.map(t=>znEsc(t)+' ('+ostalo[t].length+') – '+znEsc(ostalo['_g_'+t]||'')).join('; ')}</div>`:'');
 }
 
+// ===== Registar po planu (matrica: planske grupe x narudžbenice/ugovori) =====
+window._rgCsv=[];
+async function setupRegistar(){
+  const god=window.AKTIVNA_GODINA, sel=document.getElementById('rg-v');
+  const {data:v}=await SB.from('plan_nabave_verzije').select('verzija').eq('godina',god).order('verzija',{ascending:false});
+  const old=sel.value;
+  sel.innerHTML=(v||[]).map((x,i)=>`<option value="${x.verzija}">Verzija ${x.verzija}${i===0?' (aktivna)':''}</option>`).join('')||'<option value="">–</option>';
+  if(old&&[...sel.options].some(o=>o.value===old)) sel.value=old;
+  loadRegistar();
+}
+async function loadRegistar(){
+  const el=document.getElementById('rg-tab'); if(!el) return;
+  const god=window.AKTIVNA_GODINA, verz=document.getElementById('rg-v').value;
+  const q=(document.getElementById('rg-q').value||'').trim().toLowerCase(), tip=document.getElementById('rg-t').value, samoR=document.getElementById('rg-s').checked;
+  if(!verz){ el.innerHTML='<div class="empty"><p>Nema plana nabave za ovu godinu.</p></div>'; return; }
+  el.innerHTML='<div class="empty"><i class="ti ti-loader-2"></i><p>Učitavam...</p></div>';
+  try{
+    await ucitajOvlasti();
+    const vidiNar=seesAllNabava(), vidiUg=canVidiSveUgovore();
+    const {data:st}=await SB.from('plan_nabave').select('*').eq('godina',god).eq('verzija',parseInt(verz)).order('redni_broj',{ascending:true,nullsFirst:false});
+    const RZ=await ucitajPlanRealizaciju(god);
+    const nar=vidiNar?await fetchAllRows(()=>SB.from('narudzbenice').select('id,broj,datum,dobavljac_naziv,ukupno_bez_pdv,status').eq('godina',god).in('status',['odobrena','poslana']).order('id')):[];
+    // dokumenti
+    const docs={};
+    nar.forEach(n=>{docs['n'+n.id]={kind:'nar',id:n.id,broj:n.broj,datum:n.datum,dob:n.dobavljac_naziv,uk:parseFloat(n.ukupno_bez_pdv)||0,cells:{}};});
+    const cols=(st||[]).map(s=>({s,k:planKey(s.predmet_nabave),sum:0})).filter((c,i,a)=>a.findIndex(x=>x.k===c.k)===i);
+    cols.forEach(c=>{
+      (RZ.det[c.k]||[]).forEach(d=>{
+        if(d.zn){ if(!vidiUg) return; const key='z'+d.id; docs[key]=docs[key]||{kind:'ugovor',id:d.id,broj:d.ugBr||d.broj,sub:d.broj,datum:d.datum,dob:d.dobavljac_naziv,uk:0,cells:{}}; docs[key].cells[c.k]=(docs[key].cells[c.k]||0)+d.ukupno_bez_pdv; docs[key].uk+=d.ukupno_bez_pdv; c.sum+=d.ukupno_bez_pdv; }
+        else{ const key='n'+d.id; if(!docs[key]) return; docs[key].cells[c.k]=(docs[key].cells[c.k]||0)+d.ukupno_bez_pdv; c.sum+=d.ukupno_bez_pdv; }
+      });
+    });
+    let list=Object.values(docs);
+    list.forEach(d=>{ const as=Object.values(d.cells).reduce((a,b)=>a+b,0); d.rest=Math.max(0,d.uk-as); });
+    if(tip==='nar') list=list.filter(d=>d.kind==='nar'); if(tip==='ugovor') list=list.filter(d=>d.kind==='ugovor');
+    if(q) list=list.filter(d=>[d.broj,d.sub,d.dob].some(v=>String(v||'').toLowerCase().includes(q)));
+    list.sort((a,b)=>String(a.datum||'').localeCompare(String(b.datum||''))||String(a.broj||'').localeCompare(String(b.broj||'')));
+    let shown=cols; if(samoR) shown=cols.filter(c=>c.sum>0||list.some(d=>d.cells[c.k]));
+    const hasRest=list.some(d=>d.rest>0.004);
+    const f=v=>v?fmtEUR(v):'';
+    const th='padding:6px 8px;border:1px solid var(--border);background:var(--bg3);font-size:11.5px;vertical-align:bottom';
+    const td='padding:5px 8px;border:1px solid var(--border);font-size:12.5px;text-align:right;white-space:nowrap';
+    const sticky=(l,w)=>`position:sticky;left:${l}px;min-width:${w}px;max-width:${w}px;z-index:2;background:var(--bg)`;
+    const colRows=(lbl,fn,extra)=>`<tr><th colspan="4" style="${th};text-align:right;position:sticky;left:0;z-index:3">${lbl}</th>${shown.map(c=>`<th style="${th};text-align:right;font-weight:600;${extra?extra(c):''}">${fn(c)}</th>`).join('')}${hasRest?`<th style="${th}"></th>`:''}</tr>`;
+    const hdr=`<tr><th style="${th};position:sticky;left:0;z-index:3;min-width:150px">Narudžbenica / ugovor</th><th style="${th};position:sticky;left:150px;z-index:3;min-width:190px">Dobavljač</th><th style="${th};position:sticky;left:340px;z-index:3;min-width:84px">Datum</th><th style="${th};position:sticky;left:424px;z-index:3;min-width:96px;text-align:right">Bez PDV-a</th>${shown.map(c=>`<th style="${th};min-width:120px;max-width:150px" title="${znEsc(c.s.predmet_nabave)}"><div style="font-weight:700">${znEsc(c.s.predmet_nabave)}</div><div style="font-weight:400;color:var(--text2)">${znEsc(c.s.cpv||'')}</div></th>`).join('')}${hasRest?`<th style="${th};min-width:110px">Nije dodijeljeno planskoj grupi</th>`:''}</tr>`;
+    const proc=colRows('PROCIJENJENA',c=>f(c.s.procijenjena_vrijednost||0));
+    const real=colRows('REALIZACIJA',c=>f(c.sum));
+    const prost=colRows('PREOSTALO',c=>{const r=(c.s.procijenjena_vrijednost||0)-c.sum; return r?fmtEUR(r):'';},c=>((c.s.procijenjena_vrijednost||0)-c.sum)<-0.004?'color:#c0392b':'color:#22863a');
+    const body=list.map(d=>`<tr><td style="${td};text-align:left;${sticky(0,150)};font-weight:600">${znEsc(d.broj||'')}${d.kind==='ugovor'?` <span style="font-weight:400;font-size:11px;color:var(--text2)">ugovor${d.sub?' · '+znEsc(d.sub):''}</span>`:''}</td><td style="${td};text-align:left;${sticky(150,190)};white-space:normal">${znEsc(d.dob||'')}</td><td style="${td};text-align:center;${sticky(340,84)}">${znEsc(d.datum||'')}</td><td style="${td};${sticky(424,96)}">${fmtEUR(d.uk)}</td>${shown.map(c=>`<td style="${td}">${f(d.cells[c.k])}</td>`).join('')}${hasRest?`<td style="${td};color:#b26a00">${f(d.rest>0.004?d.rest:0)}</td>`:''}</tr>`).join('');
+    const ukup=list.reduce((a,d)=>a+d.uk,0);
+    const foot=`<tr><td colspan="3" style="${td};font-weight:700;text-align:right;${sticky(0,150)}">UKUPNO (${list.length})</td><td style="${td};font-weight:700;${sticky(424,96)}">${fmtEUR(ukup)}</td>${shown.map(c=>`<td style="${td};font-weight:700">${f(list.reduce((a,d)=>a+(d.cells[c.k]||0),0))}</td>`).join('')}${hasRest?`<td style="${td};font-weight:700">${f(list.reduce((a,d)=>a+(d.rest>0.004?d.rest:0),0))}</td>`:''}</tr>`;
+    el.innerHTML=`<table style="border-collapse:separate;border-spacing:0;font-family:inherit"><thead>${hdr}${proc}${real}${prost}</thead><tbody>${body||`<tr><td colspan="${5+shown.length}" style="padding:20px;text-align:center;color:var(--text2)">Nema dokumenata za odabrani filtar</td></tr>`}${foot}</tbody></table>`;
+    // CSV
+    const rows=[['Broj','Dobavljač','Datum','Bez PDV-a',...shown.map(c=>c.s.predmet_nabave),...(hasRest?['Nije dodijeljeno']:[])]];
+    rows.push(['PROCIJENJENA','','','',...shown.map(c=>c.s.procijenjena_vrijednost||0),...(hasRest?['']:[])]);
+    rows.push(['REALIZACIJA','','','',...shown.map(c=>c.sum),...(hasRest?['']:[])]);
+    list.forEach(d=>rows.push([d.broj,d.dob,d.datum,d.uk,...shown.map(c=>d.cells[c.k]||''),...(hasRest?[d.rest>0.004?d.rest:'']:[])]));
+    window._rgCsv=rows;
+  }catch(e){ el.innerHTML=`<div class="al ald" style="margin:1rem">Greška: ${znEsc(e.message)}</div>`; }
+}
+function registarCSV(){
+  const rows=window._rgCsv||[]; if(!rows.length) return;
+  const q=v=>{v=v==null?'':String(v); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':(typeof v==='string'&&/^-?\d+\.\d+$/.test(v)?v.replace('.',','):v);};
+  const csv='\ufeff'+rows.map(r=>r.map(q).join(';')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`registar-po-planu_${window.AKTIVNA_GODINA}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+
 function printZN(){
   const doc=document.getElementById('zn-doc'); if(!doc) return;
   const old=document.getElementById('nar-print-frame'); if(old) old.remove();
@@ -6576,7 +6657,7 @@ async function ucitajPlanRealizaciju(god){
   });
   // Ugovori iz zahtjeva za nabavu (postupak proveden)
   try{
-    const {data:zns}=await SB.from('zahtjevi_nabave').select('id,broj,datum_postupka,datum,dobavljac_naziv,ugovor_vrijednost,ugovor_status,plan_stavka_id').eq('status','proveden').not('plan_stavka_id','is',null);
+    const {data:zns}=await SB.from('zahtjevi_nabave').select('id,broj,ugovor_broj,datum_postupka,datum,dobavljac_naziv,ugovor_vrijednost,ugovor_status,plan_stavka_id').eq('status','proveden').not('plan_stavka_id','is',null);
     const ids=(zns||[]).map(z=>z.id);
     let anx=[],rac=[];
     if(ids.length){
@@ -6590,7 +6671,7 @@ async function ucitajPlanRealizaciju(god){
       const fakt=rac.filter(r=>r.zahtjev_id===z.id).reduce((a,r)=>a+(parseFloat(r.iznos_bez_pdv)||0),0);
       const plac=rac.filter(r=>r.zahtjev_id===z.id&&r.placeno).reduce((a,r)=>a+(parseFloat(r.iznos_bez_pdv)||0),0);
       const iznos=(z.ugovor_status==='raskinut')?fakt:ugov;
-      (det[k]=det[k]||[]).push({zn:true,id:z.id,broj:z.broj,datum:z.datum_postupka||z.datum,dobavljac_naziv:z.dobavljac_naziv,ukupno_bez_pdv:iznos,ugovoreno:ugov,fakturirano:fakt,placeno:plac,status:'ugovor',ugovor_status:z.ugovor_status});
+      (det[k]=det[k]||[]).push({zn:true,id:z.id,broj:z.broj,ugBr:z.ugovor_broj||'',datum:z.datum_postupka||z.datum,dobavljac_naziv:z.dobavljac_naziv,ukupno_bez_pdv:iznos,ugovoreno:ugov,fakturirano:fakt,placeno:plac,status:'ugovor',ugovor_status:z.ugovor_status});
       sum[k]=(sum[k]||0)+iznos;
     });
   }catch(e){console.warn('Ugovori u planu:',e);}
