@@ -284,9 +284,11 @@ select{cursor:pointer}
     <div style="font-size:18px;font-weight:700;margin-bottom:4px">Prijava u sustav</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:1.5rem">Unesite korisnicke podatke za pristup</div>
     <div id="lal"></div>
-    <div class="fg"><label class="fl" id="lu-lbl">Korisnicko ime</label><input type="text" id="lu" placeholder="korisnicko ime ili email"></div>
-    <div class="fg"><label class="fl">Lozinka</label><input type="password" id="lp" placeholder="..."></div>
-    <button class="btn bp" style="width:100%;justify-content:center" onclick="doLogin()"><i class="ti ti-login"></i> Prijavi se</button>
+    <form id="login-form" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();doLogin();return false;">
+    <div class="fg"><label class="fl" id="lu-lbl" for="lu">Korisnicko ime</label><input type="text" id="lu" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="korisnicko ime ili email"></div>
+    <div class="fg"><label class="fl" for="lp">Lozinka</label><input type="password" id="lp" name="password" autocomplete="current-password" placeholder="..."></div>
+    <button type="submit" class="btn bp" style="width:100%;justify-content:center"><i class="ti ti-login"></i> Prijavi se</button>
+    </form>
     <div class="demo"><b>Prijava</b>Unesite email i lozinku koje ste postavili u Supabase<br><span style="font-size:10.5px;color:#888;margin-top:4px;display:block">Sustav je spojen na bazu podataka</span></div>
   </div>
 </div>
@@ -295,7 +297,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.10-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.10-B</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -2050,7 +2052,7 @@ function doLoginLocal(){
   SB_USER = null; // local mode
   afterLoginSuccess();
 }
-document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("ls").style.display!=="none")doLogin();});
+// Enter na prijavi rješava obrazac (form submit)
 function doLogout(){if(isLive()){doLogoutSB();return;}CU=null;DB.evidencija={};document.getElementById("app").style.display="none";document.getElementById("ls").style.display="flex";document.getElementById("lal").innerHTML="";}
 
 // ══ GLOBALNA AKTIVNA GODINA (Nabava) ═══════════════════════════
