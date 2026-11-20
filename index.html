@@ -295,7 +295,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.9-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.10-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -348,6 +348,7 @@ select{cursor:pointer}
       <div class="page active" id="page-dashboard">
         <div class="ph"><div><div class="pt">Pregled</div><div class="ps">Stanje nabave</div></div>
         <div class="phr" id="dash-actions"></div></div>
+        <div id="dash-upoz"></div>
         <div class="mgr" id="nabava-dmet"></div>
         <div class="card"><div class="ch"><div class="ct"><i class="ti ti-file-description"></i> Zadnje zahtjevnice</div></div>
         <div class="tw"><table><thead><tr><th>Broj</th><th>Datum</th><th>Mjesto troška</th><th>Zatražio</th><th>Status</th></tr></thead><tbody id="dash-zah-tb"></tbody></table></div></div>
@@ -2138,6 +2139,7 @@ async function rDash(){
   ntb.innerHTML=(nar&&nar.length)?nar.map(n=>{const st=NAR_STATUS[n.status]||{lbl:n.status,cls:'bdg bgy'};
     return `<tr><td><strong>${n.broj}</strong></td><td>${n.datum}</td><td>${n.dobavljac_naziv||''}</td><td>${(n.ukupno_s_pdv||0).toFixed(2)} €</td><td><span class="${st.cls}">${st.lbl}</span></td></tr>`;
   }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:1.5rem">Nema narudžbenica</td></tr>';
+  rDashUpozorenja();
 }
 
 // ══ ULOGE I OVLASTI (Nabava) ══════════════════════════════════
@@ -6787,6 +6789,61 @@ async function setupOdluke(){
   el.innerHTML=!(data||[]).length?'<div class="empty"><i class="ti ti-file-certificate"></i><p>Nema odobrenih zahtjeva za nabavu. Odluka se izrađuje nakon što direktor odobri zahtjev.</p></div>':
    `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)"><th style="${th}">Zahtjev</th><th style="${th}">Predmet</th><th style="${th};text-align:right">Procijenjeno</th><th style="${th}">Odluka</th><th></th></tr></thead><tbody>`+
    data.map(z=>{const o=z.odluka_podaci; return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px"><strong>${znEsc(z.broj)}</strong></td><td style="padding:8px 10px">${znEsc(z.predmet)}</td><td style="padding:8px 10px;text-align:right">${fmtEUR(z.procijenjena_vrijednost)}</td><td style="padding:8px 10px">${o?`<span class="bdg bgr">Izrađena ${znEsc(o.datum||'')}</span><div style="font-size:11.5px;color:var(--text2)">Ev. broj ${znEsc(o.evid||'')}</div>`:'<span class="bdg bam">Nije izrađena</span>'}</td><td style="padding:8px 10px"><button class="btn bxs ${o?'bs':'bp'}" onclick="otvoriOdluku(${z.id})"><i class="ti ti-file-certificate"></i> ${o?'Otvori':'Izradi odluku'}</button></td></tr>`;}).join('')+'</tbody></table></div>';
+}
+
+// ===== Upozorenja na početnoj stranici =====
+async function rDashUpozorenja(){
+  const el=document.getElementById('dash-upoz'); if(!el) return;
+  const god=window.AKTIVNA_GODINA, items=[];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const iso=d=>d.toISOString().slice(0,10);
+  const dani=d=>Math.round((new Date(d+'T12:00:00')-today)/86400000);
+  const add=(lvl,icon,txt,page)=>items.push({lvl,icon,txt,page});
+  try{ await ucitajOvlasti(); }catch(e){}
+  const vidiUg=canVidiSveUgovore(), vidiNar=seesAllNabava();
+  // 1. zahtjevi za nabavu
+  try{
+    const {data:zn}=await SB.from('zahtjevi_nabave').select('id,broj,status,datum,datum_odobrenja,odluka_podaci,ugovor_do,ugovor_status,predmet').eq('godina',god);
+    const L=zn||[];
+    if(canApprove()){ const k=L.filter(z=>z.status==='kod_direktora'); if(k.length){ const st=k.filter(z=>dani(String(z.datum).slice(0,10))<=-7).length; add(st?'red':'amb','ti-signature',`<b>${k.length}</b> ${k.length===1?'zahtjev za nabavu čeka':'zahtjeva za nabavu čeka'} odobrenje direktora${st?` (od toga ${st} čeka duže od tjedan dana)`:''}`,'zahtjevi-nabave'); } }
+    if(canVoditiPostupak()){ const o=L.filter(z=>z.status==='odobren'); if(o.length) add('amb','ti-gavel',`<b>${o.length}</b> odobren${o.length===1?'i zahtjev čeka':'ih zahtjeva čeka'} provedbu postupka i upis ugovora`,'zahtjevi-nabave'); }
+    if(canOdluka()){ const o=L.filter(z=>z.status==='odobren'&&!z.odluka_podaci&&parseFloat(z.procijenjena_vrijednost)!==0); if(o.length) add('blu','ti-file-certificate',`<b>${o.length}</b> odobren${o.length===1?'i zahtjev nema':'ih zahtjeva nema'} internu odluku o pokretanju postupka`,'odluke'); }
+    if(vidiUg){
+      const ug=L.filter(z=>z.status==='proveden'&&(z.ugovor_status||'na_snazi')==='na_snazi'&&z.ugovor_do);
+      let ist=ug.filter(z=>{const d=dani(z.ugovor_do);return d>=0&&d<=60;}), pro=ug.filter(z=>dani(z.ugovor_do)<0);
+      if(ug.length){ const {data:ax}=await SB.from('zahtjevi_nabave_aneksi').select('zahtjev_id,novi_rok,id').not('novi_rok','is',null).order('id'); const rok={}; (ax||[]).forEach(a=>rok[a.zahtjev_id]=a.novi_rok); const eff=z=>rok[z.id]||z.ugovor_do; ist=ug.filter(z=>{const d=dani(eff(z));return d>=0&&d<=60;}); pro=ug.filter(z=>dani(eff(z))<0); }
+      if(pro.length) add('red','ti-calendar-x',`<b>${pro.length}</b> ugovor${pro.length===1?' je istekao':'a je isteklo'}, a status je još „na snazi“: ${pro.slice(0,3).map(z=>znEsc(z.broj)).join(', ')}`,'ugovori');
+      if(ist.length) add('amb','ti-calendar-time',`<b>${ist.length}</b> ugovor${ist.length===1?' ističe':'a ističe'} u sljedećih 60 dana: ${ist.slice(0,3).map(z=>znEsc(z.broj)).join(', ')}`,'ugovori');
+    }
+  }catch(e){}
+  // 2. računi koji kasne
+  try{
+    const mk=async(tab,fk)=>{ const {data}=await SB.from(tab).select(`id,${fk},rok_placanja,placeno,iznos_bez_pdv`).eq('placeno',false).not('rok_placanja','is',null); return data||[]; };
+    let rac=[];
+    if(vidiUg) rac=rac.concat(await mk('zahtjevi_nabave_racuni','zahtjev_id'));
+    if(vidiNar) rac=rac.concat(await mk('narudzbenice_racuni','narudzbenica_id'));
+    const kasni=rac.filter(r=>dani(r.rok_placanja)<0), uskoro=rac.filter(r=>{const d=dani(r.rok_placanja);return d>=0&&d<=7;});
+    const sum=a=>a.reduce((x,r)=>x+(parseFloat(r.iznos_bez_pdv)||0),0);
+    if(kasni.length) add('red','ti-alert-triangle',`<b>${kasni.length}</b> ${kasni.length===1?'račun kasni':'računa kasni'} s plaćanjem (${fmtEUR(sum(kasni))} bez PDV-a)`,'realizacija');
+    if(uskoro.length) add('amb','ti-clock',`<b>${uskoro.length}</b> ${uskoro.length===1?'račun dospijeva':'računa dospijeva'} u sljedećih 7 dana (${fmtEUR(sum(uskoro))} bez PDV-a)`,'realizacija');
+  }catch(e){}
+  // 3. pragovi i prekoračenja plana
+  if(vidiNar){
+    try{
+      const nar=await fetchAllRows(()=>SB.from('narudzbenice').select('id,dobavljac_naziv,ukupno_bez_pdv,status').eq('godina',god).in('status',['odobrena','poslana']).order('id'));
+      const per={}; nar.forEach(n=>{const k=(n.dobavljac_naziv||'').trim(); if(k) per[k]=(per[k]||0)+(parseFloat(n.ukupno_bez_pdv)||0);});
+      const pr=Object.entries(per).filter(([k,v])=>v>=15000).sort((a,b)=>b[1]-a[1]);
+      if(pr.length) add('amb','ti-scale',`Ukupne narudžbenice ove godine kod <b>${pr.length}</b> ${pr.length===1?'dobavljača prelaze':'dobavljača prelaze'} 15.000 € bez PDV-a: ${pr.slice(0,3).map(([k,v])=>znEsc(k)+' ('+fmtEUR(v)+')').join(', ')}. Provjeri radi li se o istom predmetu nabave.`,'realizacija');
+    }catch(e){}
+    try{
+      const pl=await fetchAllRows(()=>SB.from('plan_nabave').select('predmet_nabave,procijenjena_vrijednost,verzija').eq('godina',god).order('id'));
+      const mv=Math.max(0,...pl.map(x=>x.verzija||0)), RZ=await ucitajPlanRealizaciju(god);
+      const pre=pl.filter(x=>(x.verzija||0)===mv).filter(x=>(RZ.sum[planKey(x.predmet_nabave)]||0)>(parseFloat(x.procijenjena_vrijednost)||0)+0.005&&(parseFloat(x.procijenjena_vrijednost)||0)>0);
+      if(pre.length) add('red','ti-chart-bar-off',`<b>${pre.length}</b> ${pre.length===1?'planska grupa premašuje':'planskih grupa premašuje'} procijenjenu vrijednost: ${pre.slice(0,3).map(x=>znEsc(x.predmet_nabave)).join(', ')}`,'registar');
+    }catch(e){}
+  }
+  const col={red:'#c0392b',amb:'#b26a00',blu:'#1a5fa8'}, bg={red:'rgba(192,57,43,.08)',amb:'rgba(178,106,0,.09)',blu:'rgba(26,95,168,.08)'};
+  el.innerHTML=items.length?`<div class="card" style="margin-bottom:1rem"><div class="ch"><div class="ct"><i class="ti ti-bell-ringing"></i> Treba pažnju</div></div><div style="padding:0 12px 12px">`+items.map(i=>`<div onclick="sP('${i.page}')" style="cursor:pointer;display:flex;gap:10px;align-items:flex-start;padding:8px 10px;margin-top:6px;border-radius:8px;background:${bg[i.lvl]};border-left:4px solid ${col[i.lvl]};font-size:13px"><i class="ti ${i.icon}" style="color:${col[i.lvl]};font-size:18px;margin-top:1px"></i><div>${i.txt}</div></div>`).join('')+`</div></div>`:'';
 }
 
 function printZN(){
