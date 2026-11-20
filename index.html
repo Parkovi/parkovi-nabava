@@ -297,7 +297,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.14-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.15-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -6646,10 +6646,10 @@ function registarCSV(){
 
 // ===== Interna odluka o pokretanju postupka i imenovanju stručnog povjerenstva =====
 const OD_ZADACE={
- prvi_javna:['Priprema i izrada dokumentacije o nabavi temeljem Pravilnika o dokumentaciji o nabavi te ponudi u postupcima javne nabave;','Objava poziva za nadmetanje u Elektroničkom oglasniku javne nabave „Narodnih novina“;','Vođenje evidencije o preuzimanju dokumentacije o nabavi;','Prvi ovlašteni predstavnik Naručitelja u elektroničkoj nabavi;','Otključava e-ponude privatnim ključem;','Vodi javno otvaranje ponuda;','Sastavlja zapisnik o otvaranju ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda;','Sastavlja prijedlog odluke o odabiru/poništenju;','Nakon sklapanja ugovora o javnoj nabavi objavljuje obavijest o sklopljenim ugovorima u Elektroničkom oglasniku javne nabave „Narodnih novina“ u roku od 30 dana od dana sklapanja ugovora.'],
- drugi_javna:['Drugi ovlašteni predstavnik Naručitelja u elektroničkoj nabavi;','Otključava e-ponude privatnim ključem;','Sastavlja zapisnik o otvaranju ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda.'],
- prvi_jn:['Priprema i izrada poziva na dostavu ponuda i pripadajuće dokumentacije;','Objava poziva odnosno upućivanje poziva putem modula jednostavne nabave EOJN RH;','Provodi otvaranje ponuda putem modula jednostavne nabave EOJN RH;','Sastavlja zapisnik o otvaranju ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda;','Sastavlja prijedlog odluke o odabiru/poništenju;','Evidentira postupak i sklopljeni ugovor u plan nabave i registar ugovora.'],
- drugi_jn:['Sudjeluje u otvaranju, pregledu i ocjeni ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda.'],
+ prvi_javna:['Priprema i izrada dokumentacije o nabavi te objava poziva na nadmetanje u Elektroničkom oglasniku javne nabave „Narodnih novina“ (EOJN RH);','Komunikacija s gospodarskim subjektima te objava pojašnjenja i izmjena dokumentacije o nabavi putem EOJN RH;','Prvi ovlašteni predstavnik Naručitelja u elektroničkoj nabavi: otključava e-ponude privatnim ključem i vodi javno otvaranje ponuda;','Provodi pregled i ocjenu ponuda, zahtijeva pojašnjenja i dopune ponuda te provjerava dokaze sposobnosti;','Sastavlja zapisnik o otvaranju ponuda i zapisnik o pregledu i ocjeni ponuda;','Izrađuje prijedlog odluke o odabiru odnosno poništenju postupka;','Priprema nacrt ugovora o javnoj nabavi, objavljuje obavijest o sklopljenom ugovoru u EOJN RH u propisanom roku te ažurira plan nabave i registar ugovora;','Vodi i čuva dokumentaciju postupka nabave.'],
+ drugi_javna:['Drugi ovlašteni predstavnik Naručitelja u elektroničkoj nabavi: zajedno s prvim ovlaštenim predstavnikom otključava e-ponude privatnim ključem;','Sudjeluje u javnom otvaranju ponuda te u izradi zapisnika o otvaranju ponuda;','Sudjeluje u pregledu i ocjeni ponuda: provjerava osnove za isključenje, kriterije za odabir sposobnosti, tehničku sukladnost i računsku ispravnost ponuda;','Sudjeluje u izradi zapisnika o pregledu i ocjeni ponuda i prijedloga odluke o odabiru odnosno poništenju.'],
+ prvi_jn:['Priprema i izrada poziva na dostavu ponuda i pripadajuće dokumentacije (opis predmeta, procijenjena vrijednost, uvjeti, kriterij za odabir ponude, rok za dostavu) u modulu jednostavne nabave EOJN RH;','Upućivanje poziva odabranim gospodarskim subjektima odnosno javna objava poziva u EOJN RH, sukladno vrijednosnoj kategoriji postupka;','Komunikacija s gospodarskim subjektima te objava pojašnjenja i izmjena dokumentacije putem EOJN RH;','Provodi otvaranje ponuda u EOJN RH i sastavlja zapisnik o otvaranju ponuda;','Provodi pregled i ocjenu ponuda te sastavlja zapisnik o pregledu i ocjeni ponuda;','Izrađuje prijedlog odluke o odabiru odnosno poništenju postupka;','Priprema nacrt ugovora odnosno narudžbenice te evidentira postupak u planu nabave i registru ugovora;','Vodi i čuva dokumentaciju postupka nabave.'],
+ drugi_jn:['Sudjeluje u otvaranju ponuda u EOJN RH;','Sudjeluje u pregledu i ocjeni ponuda: provjerava tehničku sukladnost, računsku ispravnost i ispunjenost uvjeta iz poziva;','Sudjeluje u izradi zapisnika o pregledu i ocjeni ponuda i prijedloga odluke o odabiru odnosno poništenju.'],
  strucni:['Izrada tehničke dokumentacije za nadmetanje (tehnička specifikacija, troškovnik);','Praćenje realizacije ugovora.'],
  tehnicki:['Izrada troškovnika i tehničkih specifikacija.'],
  pratitelj:['Praćenje realizacije ugovora.']
@@ -6685,9 +6685,10 @@ function odDodajClana(c){
    <div class="fg" style="margin:0"><label class="fl">Uloga</label><select class="odc-ul"><option value="prvi">${OD_ULOGE.prvi}</option><option value="drugi">${OD_ULOGE.drugi}</option><option value="tehnicki">${OD_ULOGE.tehnicki}</option><option value="pratitelj">${OD_ULOGE.pratitelj}</option></select></div>
    <button class="btn bxs bd" onclick="this.closest('.od-clan').remove()" title="Ukloni"><i class="ti ti-trash"></i></button></div>
    <label style="font-size:12px;display:flex;gap:6px;align-items:center;margin:6px 0"><input type="checkbox" class="odc-cert"> Ima važeći certifikat u području javne nabave</label>
-   <div class="fg" style="margin:0"><label class="fl">Zadaće (svaka u novom retku)</label><textarea class="odc-zad" rows="4" style="font-size:12px"></textarea></div>`;
+   <div class="fg" style="margin:0"><label class="fl">Zadaće (svaka u novom retku) <a href="#" class="odc-rst" style="font-weight:400;margin-left:8px">vrati zadane zadaće</a></label><textarea class="odc-zad" rows="4" style="font-size:12px"></textarea></div>`;
   d.querySelector('.odc-ime').value=c.ime||''; d.querySelector('.odc-fun').value=c.funkcija||''; d.querySelector('.odc-ul').value=c.uloga||'drugi'; d.querySelector('.odc-cert').checked=!!c.cert; d.querySelector('.odc-zad').value=c.zadace||'';
   d.querySelector('.odc-ul').onchange=function(){ const z=d.querySelector('.odc-zad'); const kat=document.getElementById('od-kat').value; const all=Object.values(OD_ZADACE).map(a=>a.join('\n')); if(!z.value.trim()||all.includes(z.value)) z.value=odZadace(this.value,kat); };
+  d.querySelector('.odc-rst').onclick=function(e){e.preventDefault(); d.querySelector('.odc-zad').value=odZadace(d.querySelector('.odc-ul').value,document.getElementById('od-kat').value);};
   document.getElementById('od-clanovi').appendChild(d);
 }
 const OD_KLASA='007-01/12-01/95';
