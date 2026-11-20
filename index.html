@@ -297,7 +297,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.10-B</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.12-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -1330,8 +1330,8 @@ select{cursor:pointer}
     <div class="mb" style="max-height:72vh;overflow:auto">
       <div id="od-info" style="font-size:12.5px;margin-bottom:10px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-        <div class="fg" style="margin:0"><label class="fl">Klasa</label><input type="text" id="od-klasa" placeholder="npr. 406-01/26-01/12"></div>
-        <div class="fg" style="margin:0"><label class="fl">Urbroj</label><input type="text" id="od-urbroj" placeholder="npr. 02/26-5"></div>
+        <div class="fg" style="margin:0"><label class="fl">Klasa (stalna)</label><input type="text" id="od-klasa"></div>
+        <div class="fg" style="margin:0"><label class="fl">Urudžbeni broj (automatski)</label><input type="text" id="od-urbroj"></div>
         <div class="fg" style="margin:0"><label class="fl">Evidencijski broj nabave</label><input type="text" id="od-evid" placeholder="npr. 4-2026"></div>
         <div class="fg" style="margin:0"><label class="fl">Mjesto</label><input type="text" id="od-mjesto" value="Split"></div>
         <div class="fg" style="margin:0"><label class="fl">Datum odluke</label><input type="date" id="od-datum"></div>
@@ -5959,7 +5959,7 @@ async function pregledZN(id,mode){
     pristupHtml=`<div style="font-size:12px;color:var(--text2);margin-top:6px">Vide ugovor: pratitelj${z.pratitelj_ime?' ('+znEsc(z.pratitelj_ime)+')':''}, administrator, direktor${(pp&&pp.length)?', '+pp.map(x=>znEsc(x.user_name||'?')).join(', '):''}</div>`;
   }
   document.getElementById('pregled-nab-content').innerHTML=(mode==='ugovor')
-    ?`<div style="padding-bottom:10px;margin-bottom:4px;border-bottom:2px solid #00b38a"><div style="font-size:11.5px;color:var(--text2)">Zahtjev ${znEsc(z.broj)} · ${znEsc(jn)}</div><div style="font-size:17px;font-weight:700">${znEsc(z.predmet)}</div>${pristupHtml}</div>${ugBlok}${realBlok}`
+    ?`<div style="padding-bottom:10px;margin-bottom:4px;border-bottom:2px solid #00b38a"><div style="font-size:11.5px;color:var(--text2)">Zahtjev ${znEsc(z.broj)} · ${znEsc(jn)}</div><div style="font-size:17px;font-weight:700">${znEsc(z.predmet)}</div>${z.odluka_podaci?.urbroj?`<div style="font-size:12px;color:var(--text2);margin-top:2px">Klasa: ${znEsc(z.odluka_podaci.klasa||'')} · Urbroj: ${znEsc(z.odluka_podaci.urbroj)}</div>`:''}${pristupHtml}</div>${ugBlok}${realBlok}`
     :zahtjevPaper+((z.status==='proveden')?`<div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:6px;font-size:12.5px"><i class="ti ti-gavel"></i> Postupak je proveden i ugovor je sklopljen. Podaci o ugovoru nalaze se u rubrici <strong>Ugovori</strong>.</div>`:'');
   let a=`<button class="btn bs" onclick="closeM('mo-pregled-nab')">Zatvori</button>`;
   if(mode==='ugovor'){
@@ -6309,7 +6309,7 @@ async function loadUgovori(){
     }
     const {data,error}=await q; if(error) throw error;
     let rows=data||[];
-    if(qt) rows=rows.filter(z=>[z.broj,z.predmet,z.dobavljac_naziv,z.ugovor_broj].join(' ').toLowerCase().includes(qt));
+    if(qt) rows=rows.filter(z=>[z.broj,z.predmet,z.dobavljac_naziv,z.ugovor_broj,z.odluka_podaci?.urbroj,z.odluka_podaci?.klasa].join(' ').toLowerCase().includes(qt));
     if(!rows.length){el.innerHTML='<div class="empty"><i class="ti ti-gavel"></i><p>Nema ugovora koje smiješ vidjeti</p></div>';return;}
     const ids=rows.map(z=>z.id);
     const anx=(await SB.from('zahtjevi_nabave_aneksi').select('zahtjev_id,nova_vrijednost,novi_rok,id').in('zahtjev_id',ids).order('id')).data||[];
@@ -6324,7 +6324,7 @@ async function loadUgovori(){
       const fakt=rac.filter(r=>r.zahtjev_id===z.id).reduce((a,r)=>a+fnum(r.iznos_bez_pdv),0);
       const pct=fnum(ugov)>0?Math.round(fakt/fnum(ugov)*100):0;
       const us=z.ugovor_status||'na_snazi';
-      return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;font-weight:700;white-space:nowrap">${znEsc(z.broj)}${z.ugovor_broj?`<div style="font-weight:400;font-size:11.5px;color:var(--text2)">Ugovor ${znEsc(z.ugovor_broj)}</div>`:''}</td>
+      return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 10px;font-weight:700;white-space:nowrap">${znEsc(z.broj)}${z.odluka_podaci?.urbroj?`<div style="font-weight:400;font-size:11px;color:var(--text2)">Klasa: ${znEsc(z.odluka_podaci.klasa||'')}<br>Urbroj: ${znEsc(z.odluka_podaci.urbroj)}</div>`:''}${z.ugovor_broj?`<div style="font-weight:400;font-size:11.5px;color:var(--text2)">Ugovor ${znEsc(z.ugovor_broj)}</div>`:''}</td>
         <td style="padding:8px 10px">${znEsc(z.predmet)}</td><td style="padding:8px 10px">${znEsc(z.dobavljac_naziv||'–')}</td>
         <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fmtEUR(ugov)}</td>
         <td style="padding:8px 10px;text-align:right;white-space:nowrap;color:${pct>=100?'#c0392b':(pct>=80?'#b07d00':'inherit')}">${fmtEUR(fakt)} (${pct}%)</td>
@@ -6650,10 +6650,12 @@ const OD_ZADACE={
  drugi_javna:['Drugi ovlašteni predstavnik Naručitelja u elektroničkoj nabavi;','Otključava e-ponude privatnim ključem;','Sastavlja zapisnik o otvaranju ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda.'],
  prvi_jn:['Priprema i izrada poziva na dostavu ponuda i pripadajuće dokumentacije;','Objava poziva odnosno upućivanje poziva putem modula jednostavne nabave EOJN RH;','Provodi otvaranje ponuda putem modula jednostavne nabave EOJN RH;','Sastavlja zapisnik o otvaranju ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda;','Sastavlja prijedlog odluke o odabiru/poništenju;','Evidentira postupak i sklopljeni ugovor u plan nabave i registar ugovora.'],
  drugi_jn:['Sudjeluje u otvaranju, pregledu i ocjeni ponuda;','Sastavlja zapisnik o pregledu i ocjeni ponuda.'],
- strucni:['Izrada tehničke dokumentacije za nadmetanje (tehnička specifikacija, troškovnik);','Praćenje realizacije ugovora.']
+ strucni:['Izrada tehničke dokumentacije za nadmetanje (tehnička specifikacija, troškovnik);','Praćenje realizacije ugovora.'],
+ tehnicki:['Izrada troškovnika i tehničkih specifikacija.'],
+ pratitelj:['Praćenje realizacije ugovora.']
 };
-const OD_ULOGE={prvi:'Prvi ovlašteni predstavnik (voditelj postupka)',drugi:'Drugi ovlašteni predstavnik',strucni:'Stručni član'};
-function odZadace(uloga,kat){ return (OD_ZADACE[uloga==='strucni'?'strucni':uloga+(kat==='javna'?'_javna':'_jn')]||[]).join('\n'); }
+const OD_ULOGE={prvi:'Prvi ovlašteni predstavnik (voditelj postupka)',drugi:'Drugi ovlašteni predstavnik',tehnicki:'Član za izradu troškovnika i tehničkih specifikacija',pratitelj:'Član za praćenje realizacije ugovora',strucni:'Stručni član'};
+function odZadace(uloga,kat){ return (OD_ZADACE[['prvi','drugi'].includes(uloga)?uloga+(kat==='javna'?'_javna':'_jn'):uloga]||[]).join('\n'); }
 function odKategorija(vrsta,v){
   v=parseFloat(v)||0; const rad=vrsta==='radovi';
   if(v<=15000) return 'I';
@@ -6679,13 +6681,20 @@ function odDodajClana(c){
   d.innerHTML=`<div style="display:grid;grid-template-columns:1.2fr 1.4fr 1.2fr auto;gap:8px;align-items:end">
    <div class="fg" style="margin:0"><label class="fl">Ime i prezime</label><input type="text" class="odc-ime"></div>
    <div class="fg" style="margin:0"><label class="fl">Radno mjesto / funkcija</label><input type="text" class="odc-fun"></div>
-   <div class="fg" style="margin:0"><label class="fl">Uloga</label><select class="odc-ul"><option value="prvi">${OD_ULOGE.prvi}</option><option value="drugi">${OD_ULOGE.drugi}</option><option value="strucni">${OD_ULOGE.strucni}</option></select></div>
+   <div class="fg" style="margin:0"><label class="fl">Uloga</label><select class="odc-ul"><option value="prvi">${OD_ULOGE.prvi}</option><option value="drugi">${OD_ULOGE.drugi}</option><option value="tehnicki">${OD_ULOGE.tehnicki}</option><option value="pratitelj">${OD_ULOGE.pratitelj}</option><option value="strucni">${OD_ULOGE.strucni}</option></select></div>
    <button class="btn bxs bd" onclick="this.closest('.od-clan').remove()" title="Ukloni"><i class="ti ti-trash"></i></button></div>
    <label style="font-size:12px;display:flex;gap:6px;align-items:center;margin:6px 0"><input type="checkbox" class="odc-cert"> Ima važeći certifikat u području javne nabave</label>
    <div class="fg" style="margin:0"><label class="fl">Zadaće (svaka u novom retku)</label><textarea class="odc-zad" rows="4" style="font-size:12px"></textarea></div>`;
   d.querySelector('.odc-ime').value=c.ime||''; d.querySelector('.odc-fun').value=c.funkcija||''; d.querySelector('.odc-ul').value=c.uloga||'drugi'; d.querySelector('.odc-cert').checked=!!c.cert; d.querySelector('.odc-zad').value=c.zadace||'';
   d.querySelector('.odc-ul').onchange=function(){ const z=d.querySelector('.odc-zad'); const kat=document.getElementById('od-kat').value; const all=Object.values(OD_ZADACE).map(a=>a.join('\n')); if(!z.value.trim()||all.includes(z.value)) z.value=odZadace(this.value,kat); };
   document.getElementById('od-clanovi').appendChild(d);
+}
+const OD_KLASA='007-01/12-01/95';
+async function odNextUrbroj(yy){
+  const rows=await fetchAllRows(()=>SB.from('zahtjevi_nabave').select('id,odluka_podaci').not('odluka_podaci','is',null).order('id'));
+  const re=new RegExp('^02/'+yy+'-JN-(\\d+)$'); let mx=0;
+  rows.forEach(r=>{const m=re.exec((r.odluka_podaci&&r.odluka_podaci.urbroj)||''); if(m) mx=Math.max(mx,parseInt(m[1],10));});
+  return `02/${yy}-JN-${mx+1}`;
 }
 function canOdluka(){return ['admin','direktor','javna_nabava'].includes(CU?.role);}
 async function otvoriOdluku(id){
@@ -6696,17 +6705,22 @@ async function otvoriOdluku(id){
   let plEv=''; if(z.plan_stavka_id){ try{ const {data:ps}=await SB.from('plan_nabave').select('evidencijski_broj').eq('id',z.plan_stavka_id).maybeSingle(); plEv=ps?.evidencijski_broj||''; }catch(e){} }
   const o=z.odluka_podaci||{};
   const set=(i,v)=>{document.getElementById(i).value=v==null?'':v;};
-  set('od-klasa',o.klasa); set('od-urbroj',o.urbroj); set('od-evid',o.evid||plEv); set('od-mjesto',o.mjesto||'Split');
+  set('od-klasa',o.klasa||OD_KLASA); set('od-evid',o.evid||plEv); set('od-mjesto',o.mjesto||'Split');
   set('od-datum',o.datum||z.datum_odobrenja?.slice(0,10)||new Date().toISOString().slice(0,10));
   set('od-potpis',o.potpis||pt.odgovorna_osoba||''); set('od-adresa',o.adresa||pt.adresa||'');
   set('od-predmet',o.predmet||z.predmet); set('od-opis',o.opis!=null?o.opis:(z.opis||''));
   set('od-vrsta',o.vrsta||z.vrsta||'roba'); set('od-vr',o.vr!=null?o.vr:z.procijenjena_vrijednost);
   set('od-kat',o.kat||odKategorija(z.vrsta,z.procijenjena_vrijednost)); set('od-nacin',o.nacin||''); set('od-temelj',o.temelj||''); set('od-cert',o.cert||'');
   document.getElementById('od-clanovi').innerHTML=''; document.getElementById('od-prev').style.display='none'; document.getElementById('od-al').innerHTML='';
+  window._odAuto=false;
+  if(o.urbroj){ set('od-urbroj',o.urbroj); }
+  else { try{ const yy=String(new Date(document.getElementById('od-datum').value||Date.now()).getFullYear()).slice(2); set('od-urbroj',await odNextUrbroj(yy)); window._odAuto=true; }catch(e){ set('od-urbroj',''); } }
+  document.getElementById('od-klasa').readOnly=!isAdmin(); document.getElementById('od-urbroj').readOnly=!isAdmin();
   odKat(true);
   let cl=o.clanovi;
   if(!cl||!cl.length){ try{ cl=JSON.parse(localStorage.getItem('znLastClanovi')||'null'); }catch(e){} }
-  if(!cl||!cl.length){ const k=document.getElementById('od-kat').value; cl=[{ime:'',funkcija:'',uloga:'prvi',cert:true,zadace:odZadace('prvi',k)},{ime:'',funkcija:'',uloga:'drugi',cert:false,zadace:odZadace('drugi',k)}]; }
+  if(cl&&cl.length&&cl.length<4&&!o.clanovi){ const k=document.getElementById('od-kat').value; ['tehnicki','pratitelj'].forEach(u=>{ if(!cl.some(c=>c.uloga===u)) cl.push({ime:'',funkcija:'',uloga:u,cert:false,zadace:odZadace(u,k)}); }); }
+  if(!cl||!cl.length){ const k=document.getElementById('od-kat').value; cl=[{ime:'',funkcija:'',uloga:'prvi',cert:true,zadace:odZadace('prvi',k)},{ime:'',funkcija:'',uloga:'drugi',cert:false,zadace:odZadace('drugi',k)},{ime:'',funkcija:'',uloga:'tehnicki',cert:false,zadace:odZadace('tehnicki',k)},{ime:'',funkcija:'',uloga:'pratitelj',cert:false,zadace:odZadace('pratitelj',k)}]; }
   cl.forEach(odDodajClana);
   openM('mo-zn-odluka');
 }
@@ -6746,7 +6760,7 @@ function odHtml(o,z,forWord){
   h+=cl()+`<p style="text-align:justify">Pokreće se postupak ${javna?'javne':'jednostavne'} nabave: <b>${E(o.predmet)}</b>, evidencijski broj nabave: ${E(o.evid)}, ${o.opis?'koji obuhvaća: '+E(o.opis)+', ':''}procijenjene vrijednosti nabave <b>${eur(o.vr)}</b> (bez PDV-a), vrsta nabave: ${E(VRSTA_LBL[o.vrsta]||o.vrsta)}.</p>
   <p style="text-align:justify">Vrijednosna kategorija / vrsta postupka: ${E(kl)}.<br>Način provedbe: ${E(o.nacin)}.</p>
   ${z?`<p style="text-align:justify">Postupak se pokreće na temelju zahtjeva za nabavu broj ${E(z.broj)}${z.datum_odobrenja?', odobrenog od direktora '+new Date(z.datum_odobrenja).toLocaleDateString('hr-HR').replace(/\.?$/,'')+'.':'.'}</p>`:''}`;
-  h+=cl()+`<p style="text-align:justify">Ovom Odlukom imenuje se ${javna?'stručno povjerenstvo Naručitelja':'stručno povjerenstvo'} za provedbu postupka iz članka 2. ove Odluke. Ovlašteni predstavnici Naručitelja u stručnom povjerenstvu su:</p><ol style="margin:4px 0 4px 20px">${clan.map(c=>`<li style="text-align:justify">${E(c.ime)}${c.funkcija?', '+E(c.funkcija):''}, ${E(OD_ULOGE[c.uloga]||'')}${c.cert&&javna?', sa završenim specijalističkim programom izobrazbe u području javne nabave':''};</li>`).join('')}</ol>`;
+  h+=cl()+`<p style="text-align:justify">Ovom Odlukom imenuje se ${javna?'stručno povjerenstvo Naručitelja':'stručno povjerenstvo'} za provedbu postupka iz članka 2. ove Odluke. Ovlašteni predstavnici Naručitelja u stručnom povjerenstvu su:</p><ol style="margin:4px 0 4px 20px">${clan.map((c,ci)=>`<li style="text-align:justify">${E(c.ime)}${c.funkcija?', '+E(c.funkcija):''}, ${E(OD_ULOGE[c.uloga]||'')}${c.cert&&javna?', sa završenim specijalističkim programom izobrazbe u području javne nabave':''}${ci===clan.length-1?'.':';'}</li>`).join('')}</ol>`;
   h+=cl()+`<p style="text-align:justify">${javna?'Ovlašteni predstavnici Naručitelja iz članka 3. ove Odluke temeljem potpisanih izjava o nepostojanju sukoba interesa (članak 80. stavak 1. Zakona) nisu u sukobu interesa temeljem članka 76. Zakona.':'Članovi stručnog povjerenstva iz članka 3. ove Odluke dužni su prije početka rada u postupku dati izjavu o postojanju ili nepostojanju sukoba interesa (članak 5. Pravilnika). Ako tijekom postupka saznaju za postojanje sukoba interesa, dužni su o tome bez odgode obavijestiti direktora i izuzeti se iz daljnjeg postupanja.'}</p>`;
   h+=cl()+`<p style="text-align:justify">Obveze i ovlasti članova stručnog povjerenstva iz članka 3. ove Odluke:</p>`+clan.map(c=>{const z2=(c.zadace||'').split('\n').map(x=>x.trim()).filter(Boolean); return `<p style="margin:6px 0 2px"><b>${E(c.ime)}:</b></p>${z2.length?`<ul style="margin:0 0 4px 20px">${z2.map(x=>`<li style="text-align:justify">${E(x)}</li>`).join('')}</ul>`:''}`;}).join('');
   if(javna&&clan.some(c=>c.cert)){ const cc=clan.filter(c=>c.cert).map(c=>c.ime).join(', '); h+=cl()+`<p style="text-align:justify">Ovlašteni predstavnik Naručitelja ${E(cc)} ima važeći certifikat u području javne nabave${o.cert?' – '+E(o.cert):''}, čime je ispunjena zakonska obveza da najmanje jedan ovlašteni predstavnik Naručitelja mora posjedovati važeći certifikat u području javne nabave (članak 197. stavak 4. Zakona).</p>`; }
@@ -6774,8 +6788,10 @@ function odWord(){
 async function odSpremi(){
   if(!canOdluka()) return;
   const o=odPrikupi(), v=odValid(o), al=document.getElementById('od-al'); if(v){al.innerHTML=`<div class="al ald">${znEsc(v)}</div>`;return;}
+  if(window._odAuto&&!(window._odZ?.odluka_podaci?.urbroj)){ try{ const yy=String(new Date(o.datum||Date.now()).getFullYear()).slice(2); o.urbroj=await odNextUrbroj(yy); document.getElementById('od-urbroj').value=o.urbroj; }catch(e){} }
   const {error}=await SB.from('zahtjevi_nabave').update({odluka_podaci:o,odluka_datum:o.datum}).eq('id',window._odId);
   if(error){ al.innerHTML=`<div class="al ald">Greška: ${znEsc(error.message)}. Je li pokrenut SQL zahtjevi_nabave_faza6.sql?</div>`; return; }
+  window._odAuto=false; window._odZ.odluka_podaci=o;
   try{ localStorage.setItem('znLastClanovi',JSON.stringify(o.clanovi)); }catch(e){}
   await logN('zahtjev_nabave',window._odId,window._odZ?.broj,'Izrađena interna odluka o pokretanju postupka',o.evid);
   showToast('✅ Odluka spremljena','success'); al.innerHTML='<div class="al als">Spremljeno. Možeš je ispisati ili preuzeti za Word.</div>';
