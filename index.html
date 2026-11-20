@@ -297,7 +297,7 @@ select{cursor:pointer}
   <div class="tb">
     <div class="tbb">
       <div class="tbi"><i class="ti ti-shopping-cart"></i></div>
-      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.12-A</div></div>
+      <div><div style="font-size:13px;font-weight:700">Parkovi i nasadi d.o.o.</div><div style="font-size:10px;opacity:.6;margin-top:1px">Sustav nabave 2026. &middot; v20.14-A</div></div>
     </div>
     <div class="tbr">
       <div class="tbu">
@@ -1354,7 +1354,7 @@ select{cursor:pointer}
       <div id="od-al"></div>
       <div id="od-prev" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:16px;background:#fff;color:#000;max-height:50vh;overflow:auto"></div>
     </div>
-    <div class="mft" style="flex-wrap:wrap"><button class="btn bs" onclick="closeM('mo-zn-odluka')">Zatvori</button><button class="btn bs" onclick="odPregled()"><i class="ti ti-eye"></i> Pregled</button><button class="btn bs" onclick="odIspis()"><i class="ti ti-printer"></i> Ispis / PDF</button><button class="btn bs" onclick="odWord()"><i class="ti ti-file-word"></i> Preuzmi za Word</button><button class="btn bp" onclick="odSpremi()"><i class="ti ti-device-floppy"></i> Spremi</button></div>
+    <div class="mft" style="flex-wrap:wrap"><button class="btn bs" onclick="closeM('mo-zn-odluka')">Zatvori</button><button class="btn bs" onclick="odPregled()"><i class="ti ti-eye"></i> Pregled</button><button class="btn bs" onclick="odIspis()"><i class="ti ti-printer"></i> Ispis / PDF</button><button class="btn bs" onclick="odWord()"><i class="ti ti-file-word"></i> Preuzmi za Word</button><button class="btn bd" id="od-bdel" style="display:none" onclick="odObrisi()"><i class="ti ti-trash"></i> Obriši odluku</button><button class="btn bp" id="od-bsave" onclick="odSpremi()"><i class="ti ti-device-floppy"></i> Spremi</button></div>
   </div>
 </div>
 
@@ -6654,7 +6654,8 @@ const OD_ZADACE={
  tehnicki:['Izrada troškovnika i tehničkih specifikacija.'],
  pratitelj:['Praćenje realizacije ugovora.']
 };
-const OD_ULOGE={prvi:'Prvi ovlašteni predstavnik (voditelj postupka)',drugi:'Drugi ovlašteni predstavnik',tehnicki:'Član za izradu troškovnika i tehničkih specifikacija',pratitelj:'Član za praćenje realizacije ugovora',strucni:'Stručni član'};
+const OD_ULOGE={prvi:'Vodi postupak javne ili jednostavne nabave',drugi:'Član stručnog povjerenstva',tehnicki:'Izrada troškovnika i tehničkih specifikacija',pratitelj:'Prati realizaciju ugovora',strucni:'Član stručnog povjerenstva'};
+function odUlogaTxt(u,kat){ if(u==='prvi') return kat==='javna'?'voditelj postupka javne nabave i prvi ovlašteni predstavnik Naručitelja':'voditelj postupka jednostavne nabave'; return ({drugi:kat==='javna'?'član stručnog povjerenstva i drugi ovlašteni predstavnik Naručitelja':'član stručnog povjerenstva',tehnicki:'član zadužen za izradu troškovnika i tehničkih specifikacija',pratitelj:'član zadužen za praćenje realizacije ugovora',strucni:'član stručnog povjerenstva'})[u]||''; }
 function odZadace(uloga,kat){ return (OD_ZADACE[['prvi','drugi'].includes(uloga)?uloga+(kat==='javna'?'_javna':'_jn'):uloga]||[]).join('\n'); }
 function odKategorija(vrsta,v){
   v=parseFloat(v)||0; const rad=vrsta==='radovi';
@@ -6681,7 +6682,7 @@ function odDodajClana(c){
   d.innerHTML=`<div style="display:grid;grid-template-columns:1.2fr 1.4fr 1.2fr auto;gap:8px;align-items:end">
    <div class="fg" style="margin:0"><label class="fl">Ime i prezime</label><input type="text" class="odc-ime"></div>
    <div class="fg" style="margin:0"><label class="fl">Radno mjesto / funkcija</label><input type="text" class="odc-fun"></div>
-   <div class="fg" style="margin:0"><label class="fl">Uloga</label><select class="odc-ul"><option value="prvi">${OD_ULOGE.prvi}</option><option value="drugi">${OD_ULOGE.drugi}</option><option value="tehnicki">${OD_ULOGE.tehnicki}</option><option value="pratitelj">${OD_ULOGE.pratitelj}</option><option value="strucni">${OD_ULOGE.strucni}</option></select></div>
+   <div class="fg" style="margin:0"><label class="fl">Uloga</label><select class="odc-ul"><option value="prvi">${OD_ULOGE.prvi}</option><option value="drugi">${OD_ULOGE.drugi}</option><option value="tehnicki">${OD_ULOGE.tehnicki}</option><option value="pratitelj">${OD_ULOGE.pratitelj}</option></select></div>
    <button class="btn bxs bd" onclick="this.closest('.od-clan').remove()" title="Ukloni"><i class="ti ti-trash"></i></button></div>
    <label style="font-size:12px;display:flex;gap:6px;align-items:center;margin:6px 0"><input type="checkbox" class="odc-cert"> Ima važeći certifikat u području javne nabave</label>
    <div class="fg" style="margin:0"><label class="fl">Zadaće (svaka u novom retku)</label><textarea class="odc-zad" rows="4" style="font-size:12px"></textarea></div>`;
@@ -6696,6 +6697,7 @@ async function odNextUrbroj(yy){
   rows.forEach(r=>{const m=re.exec((r.odluka_podaci&&r.odluka_podaci.urbroj)||''); if(m) mx=Math.max(mx,parseInt(m[1],10));});
   return `02/${yy}-JN-${mx+1}`;
 }
+function canUrediOdluku(){return ['admin','javna_nabava'].includes(CU?.role);}
 function canOdluka(){return ['admin','direktor','javna_nabava'].includes(CU?.role);}
 async function otvoriOdluku(id){
   if(!canOdluka()){showToast('Interna odluka je dostupna samo direktoru, voditelju javne nabave i administratoru','error');return;}
@@ -6718,10 +6720,13 @@ async function otvoriOdluku(id){
   document.getElementById('od-klasa').readOnly=!isAdmin(); document.getElementById('od-urbroj').readOnly=!isAdmin();
   odKat(true);
   let cl=o.clanovi;
-  if(!cl||!cl.length){ try{ cl=JSON.parse(localStorage.getItem('znLastClanovi')||'null'); }catch(e){} }
-  if(cl&&cl.length&&cl.length<4&&!o.clanovi){ const k=document.getElementById('od-kat').value; ['tehnicki','pratitelj'].forEach(u=>{ if(!cl.some(c=>c.uloga===u)) cl.push({ime:'',funkcija:'',uloga:u,cert:false,zadace:odZadace(u,k)}); }); }
   if(!cl||!cl.length){ const k=document.getElementById('od-kat').value; cl=[{ime:'',funkcija:'',uloga:'prvi',cert:true,zadace:odZadace('prvi',k)},{ime:'',funkcija:'',uloga:'drugi',cert:false,zadace:odZadace('drugi',k)},{ime:'',funkcija:'',uloga:'tehnicki',cert:false,zadace:odZadace('tehnicki',k)},{ime:'',funkcija:'',uloga:'pratitelj',cert:false,zadace:odZadace('pratitelj',k)}]; }
   cl.forEach(odDodajClana);
+  const ur=canUrediOdluku();
+  document.querySelectorAll('#mo-zn-odluka input,#mo-zn-odluka textarea,#mo-zn-odluka select,#mo-zn-odluka .od-clan button,#mo-zn-odluka .mb > button').forEach(e=>{ if(!ur) { if(e.tagName==='SELECT'||e.type==='checkbox'||e.tagName==='BUTTON') e.disabled=true; else e.readOnly=true; } else { e.disabled=false; if(e.tagName!=='SELECT'&&e.type!=='checkbox'&&e.tagName!=='BUTTON') e.readOnly=false; } });
+  if(ur){ document.getElementById('od-klasa').readOnly=!isAdmin(); document.getElementById('od-urbroj').readOnly=!isAdmin(); }
+  document.getElementById('od-bsave').style.display=ur?'':'none';
+  document.getElementById('od-bdel').style.display=(ur&&z.odluka_podaci)?'':'none';
   openM('mo-zn-odluka');
 }
 function odPrikupi(){
@@ -6760,7 +6765,7 @@ function odHtml(o,z,forWord){
   h+=cl()+`<p style="text-align:justify">Pokreće se postupak ${javna?'javne':'jednostavne'} nabave: <b>${E(o.predmet)}</b>, evidencijski broj nabave: ${E(o.evid)}, ${o.opis?'koji obuhvaća: '+E(o.opis)+', ':''}procijenjene vrijednosti nabave <b>${eur(o.vr)}</b> (bez PDV-a), vrsta nabave: ${E(VRSTA_LBL[o.vrsta]||o.vrsta)}.</p>
   <p style="text-align:justify">Vrijednosna kategorija / vrsta postupka: ${E(kl)}.<br>Način provedbe: ${E(o.nacin)}.</p>
   ${z?`<p style="text-align:justify">Postupak se pokreće na temelju zahtjeva za nabavu broj ${E(z.broj)}${z.datum_odobrenja?', odobrenog od direktora '+new Date(z.datum_odobrenja).toLocaleDateString('hr-HR').replace(/\.?$/,'')+'.':'.'}</p>`:''}`;
-  h+=cl()+`<p style="text-align:justify">Ovom Odlukom imenuje se ${javna?'stručno povjerenstvo Naručitelja':'stručno povjerenstvo'} za provedbu postupka iz članka 2. ove Odluke. Ovlašteni predstavnici Naručitelja u stručnom povjerenstvu su:</p><ol style="margin:4px 0 4px 20px">${clan.map((c,ci)=>`<li style="text-align:justify">${E(c.ime)}${c.funkcija?', '+E(c.funkcija):''}, ${E(OD_ULOGE[c.uloga]||'')}${c.cert&&javna?', sa završenim specijalističkim programom izobrazbe u području javne nabave':''}${ci===clan.length-1?'.':';'}</li>`).join('')}</ol>`;
+  h+=cl()+`<p style="text-align:justify">Ovom Odlukom imenuje se ${javna?'stručno povjerenstvo Naručitelja':'stručno povjerenstvo'} za provedbu postupka iz članka 2. ove Odluke. Ovlašteni predstavnici Naručitelja u stručnom povjerenstvu su:</p><ol style="margin:4px 0 4px 20px">${clan.map((c,ci)=>`<li style="text-align:justify">${E(c.ime)}${c.funkcija?', '+E(c.funkcija):''}, ${E(odUlogaTxt(c.uloga,o.kat))}${c.cert&&javna?', sa završenim specijalističkim programom izobrazbe u području javne nabave':''}${ci===clan.length-1?'.':';'}</li>`).join('')}</ol>`;
   h+=cl()+`<p style="text-align:justify">${javna?'Ovlašteni predstavnici Naručitelja iz članka 3. ove Odluke temeljem potpisanih izjava o nepostojanju sukoba interesa (članak 80. stavak 1. Zakona) nisu u sukobu interesa temeljem članka 76. Zakona.':'Članovi stručnog povjerenstva iz članka 3. ove Odluke dužni su prije početka rada u postupku dati izjavu o postojanju ili nepostojanju sukoba interesa (članak 5. Pravilnika). Ako tijekom postupka saznaju za postojanje sukoba interesa, dužni su o tome bez odgode obavijestiti direktora i izuzeti se iz daljnjeg postupanja.'}</p>`;
   h+=cl()+`<p style="text-align:justify">Obveze i ovlasti članova stručnog povjerenstva iz članka 3. ove Odluke:</p>`+clan.map(c=>{const z2=(c.zadace||'').split('\n').map(x=>x.trim()).filter(Boolean); return `<p style="margin:6px 0 2px"><b>${E(c.ime)}:</b></p>${z2.length?`<ul style="margin:0 0 4px 20px">${z2.map(x=>`<li style="text-align:justify">${E(x)}</li>`).join('')}</ul>`:''}`;}).join('');
   if(javna&&clan.some(c=>c.cert)){ const cc=clan.filter(c=>c.cert).map(c=>c.ime).join(', '); h+=cl()+`<p style="text-align:justify">Ovlašteni predstavnik Naručitelja ${E(cc)} ima važeći certifikat u području javne nabave${o.cert?' – '+E(o.cert):''}, čime je ispunjena zakonska obveza da najmanje jedan ovlašteni predstavnik Naručitelja mora posjedovati važeći certifikat u području javne nabave (članak 197. stavak 4. Zakona).</p>`; }
@@ -6786,13 +6791,13 @@ function odWord(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿',html],{type:'application/msword'})); a.download=`Interna_odluka_${(o.evid||'nabava').replace(/[^\w.-]+/g,'_')}.doc`; document.body.appendChild(a); a.click(); a.remove();
 }
 async function odSpremi(){
-  if(!canOdluka()) return;
+  if(!canUrediOdluku()) return;
   const o=odPrikupi(), v=odValid(o), al=document.getElementById('od-al'); if(v){al.innerHTML=`<div class="al ald">${znEsc(v)}</div>`;return;}
   if(window._odAuto&&!(window._odZ?.odluka_podaci?.urbroj)){ try{ const yy=String(new Date(o.datum||Date.now()).getFullYear()).slice(2); o.urbroj=await odNextUrbroj(yy); document.getElementById('od-urbroj').value=o.urbroj; }catch(e){} }
   const {error}=await SB.from('zahtjevi_nabave').update({odluka_podaci:o,odluka_datum:o.datum}).eq('id',window._odId);
   if(error){ al.innerHTML=`<div class="al ald">Greška: ${znEsc(error.message)}. Je li pokrenut SQL zahtjevi_nabave_faza6.sql?</div>`; return; }
   window._odAuto=false; window._odZ.odluka_podaci=o;
-  try{ localStorage.setItem('znLastClanovi',JSON.stringify(o.clanovi)); }catch(e){}
+  try{ localStorage.removeItem('znLastClanovi'); }catch(e){}
   await logN('zahtjev_nabave',window._odId,window._odZ?.broj,'Izrađena interna odluka o pokretanju postupka',o.evid);
   showToast('✅ Odluka spremljena','success'); al.innerHTML='<div class="al als">Spremljeno. Možeš je ispisati ili preuzeti za Word.</div>';
 }
@@ -6862,6 +6867,18 @@ async function rDashUpozorenja(){
   }
   const col={red:'#c0392b',amb:'#b26a00',blu:'#1a5fa8'}, bg={red:'rgba(192,57,43,.08)',amb:'rgba(178,106,0,.09)',blu:'rgba(26,95,168,.08)'};
   el.innerHTML=items.length?`<div class="card" style="margin-bottom:1rem"><div class="ch"><div class="ct"><i class="ti ti-bell-ringing"></i> Treba pažnju</div></div><div style="padding:0 12px 12px">`+items.map(i=>`<div onclick="sP('${i.page}')" style="cursor:pointer;display:flex;gap:10px;align-items:flex-start;padding:8px 10px;margin-top:6px;border-radius:8px;background:${bg[i.lvl]};border-left:4px solid ${col[i.lvl]};font-size:13px"><i class="ti ${i.icon}" style="color:${col[i.lvl]};font-size:18px;margin-top:1px"></i><div>${i.txt}</div></div>`).join('')+`</div></div>`:'';
+}
+
+async function odObrisi(){
+  if(!canUrediOdluku()) return;
+  const z=window._odZ; if(!z||!z.odluka_podaci) return;
+  if(!confirm('Obrisati internu odluku '+(z.odluka_podaci.urbroj||'')+'? Njezin urudžbeni broj može se ponovno dodijeliti.')) return;
+  const sn=JSON.stringify(z.odluka_podaci);
+  const {error}=await SB.from('zahtjevi_nabave').update({odluka_podaci:null,odluka_datum:null}).eq('id',window._odId);
+  if(error){ document.getElementById('od-al').innerHTML=`<div class="al ald">Greška: ${znEsc(error.message)}</div>`; return; }
+  await logN('zahtjev_nabave',window._odId,z.broj,'Obrisana interna odluka '+(z.odluka_podaci.urbroj||''),sn);
+  showToast('Odluka obrisana','success'); closeM('mo-zn-odluka');
+  if(document.getElementById('page-odluke')?.classList.contains('active')) setupOdluke();
 }
 
 function printZN(){
