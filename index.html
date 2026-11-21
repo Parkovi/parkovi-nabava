@@ -2615,7 +2615,7 @@ async function rKor(){
       data.forEach(k=>{
         DB.users.push({
           id:k.id, name:k.name||'–', username:k.id,
-          role:k.role||'korisnik', access:k.access||'own',
+          role:k.uloga_nabava||k.role||'korisnik', access:k.access||'own',
           jedinice:k.jedinice_ids||[], pjid:k.prim_jed_id,
           aktivan:k.aktivan!==false
         });
@@ -2730,7 +2730,7 @@ async function saveUser(){
         }
         // Update existing korisnik profile in SB
         const{error}=await SB.from('korisnici').update({
-          name, role, access, jedinice_ids:jeds, prim_jed_id:pjid
+          name, uloga_nabava:role, access, jedinice_ids:jeds, prim_jed_id:pjid
         }).eq('id',eUs);
         if(error) throw error;
         // Update password if provided
@@ -2750,8 +2750,8 @@ async function saveUser(){
             <li>Email: <strong>${email}</strong> &nbsp; Lozinka: <strong>${pass}</strong> &nbsp; Auto Confirm: uključi</li>
             <li>Nakon kreiranja, pokreni u SQL Editoru:<br>
             <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:11px;display:block;margin-top:4px;word-break:break-all">
-INSERT INTO korisnici (id, name, role, access, jedinice_ids, prim_jed_id)
-SELECT id, '${name}', '${role}', '${access}', '{${jeds.join(',')}}', ${pjid||'null'}
+INSERT INTO korisnici (id, name, role, uloga_nabava, access, jedinice_ids, prim_jed_id)
+SELECT id, '${name}', 'korisnik', '${role}', '${access}', '{${jeds.join(',')}}', ${pjid||'null'}
 FROM auth.users WHERE email = '${email}';</code></li>
           </ol>
         </div>`;
@@ -3917,7 +3917,7 @@ async function loadKorisnikProfile(){
   const {data, error} = await SB.from('korisnici').select('*').eq('id', SB_USER.id).single();
   if(error||!data) return;
   CU.name    = data.name;
-  CU.role    = data.role;
+  CU.role    = data.uloga_nabava || data.role;
   CU.access  = data.access;
   CU.jedinice= data.jedinice_ids||[];
   CU.pjid    = data.prim_jed_id;
@@ -4080,11 +4080,11 @@ async function loadAllUsers(){
   data.forEach(k=>{
     const existing = DB.users.find(u=>u.id===k.id);
     if(existing){
-      existing.name=k.name; existing.role=k.role;
+      existing.name=k.name; existing.role=k.uloga_nabava||k.role;
       existing.access=k.access; existing.jedinice=k.jedinice_ids||[];
       existing.pjid=k.prim_jed_id;
     } else {
-      DB.users.push({id:k.id,name:k.name,username:'',password:'',role:k.role,access:k.access,jedinice:k.jedinice_ids||[],pjid:k.prim_jed_id});
+      DB.users.push({id:k.id,name:k.name,username:'',password:'',role:k.uloga_nabava||k.role,access:k.access,jedinice:k.jedinice_ids||[],pjid:k.prim_jed_id});
     }
   });
 }
@@ -6164,7 +6164,7 @@ async function znRealizacijaHtml(z,trenV,kind){
 // pratitelj
 async function otvoriPratitelja(id){
   window._znPrat=id;
-  const {data:kor,error:ke}=await SB.from('korisnici').select('id,name,role').order('name');
+  const {data:kor,error:ke}=await SB.from('korisnici').select('id,name,role,uloga_nabava').order('name').then(r=>({...r,data:(r.data||[]).map(u=>({...u,role:u.uloga_nabava||u.role}))}));
   const us=(kor||[]);
   window._znKorisnici=us;
   if(ke) showToast('Greška pri učitavanju korisnika: '+ke.message,'error');
@@ -6342,7 +6342,7 @@ function resetUgFilter(){['ug-fst','ug-fq'].forEach(i=>{const e=document.getElem
 
 // ── Ovlasti za plaćanje (administrator) ──
 async function otvoriUgOvlasti(){
-  const {data:kor}=await SB.from('korisnici').select('id,name,role').order('name');
+  const {data:kor}=await SB.from('korisnici').select('id,name,role,uloga_nabava').order('name').then(r=>({...r,data:(r.data||[]).map(u=>({...u,role:u.uloga_nabava||u.role}))}));
   const {data:ov}=await SB.from('nabava_ovlasti').select('user_id').eq('ovlast','placanje');
   const imaju=new Set((ov||[]).map(x=>x.user_id));
   window._ugKor=kor||[];
@@ -6364,7 +6364,7 @@ async function saveUgOvlasti(){
 
 // ── Pristup pojedinom ugovoru (administrator) ──
 async function otvoriUgPristup(zid){
-  const {data:kor}=await SB.from('korisnici').select('id,name,role').order('name');
+  const {data:kor}=await SB.from('korisnici').select('id,name,role,uloga_nabava').order('name').then(r=>({...r,data:(r.data||[]).map(u=>({...u,role:u.uloga_nabava||u.role}))}));
   const {data:pr}=await SB.from('zahtjevi_nabave_pristup').select('user_id').eq('zahtjev_id',zid);
   const imaju=new Set((pr||[]).map(x=>x.user_id));
   window._ugPrist=zid; window._ugKor=kor||[];
