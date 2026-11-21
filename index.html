@@ -3807,7 +3807,7 @@ const SB_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
     const url = localStorage.getItem('sb_url') || SB_URL_DEFAULT;
     const key = localStorage.getItem('sb_key') || SB_KEY_DEFAULT;
     if(url && key) {
-      SB = supabase.createClient(url, key);
+      SB = supabase.createClient(url, key, {auth:{storage:window.sessionStorage}});
       SB_MODE = 'live';
       const ui = document.getElementById('sb-url-input');
       const ki = document.getElementById('sb-key-input');
@@ -3843,7 +3843,7 @@ async function connectSupabase(){
   const key = document.getElementById('sb-key-input').value.trim();
   if(!url || !key){ alert('Unesite Supabase URL i ključ!'); return; }
   try {
-    SB = supabase.createClient(url, key);
+    SB = supabase.createClient(url, key, {auth:{storage:window.sessionStorage}});
     // Test connection
     const {error} = await SB.from('vrste').select('id').limit(1);
     if(error) throw error;
