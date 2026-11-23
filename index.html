@@ -2620,6 +2620,7 @@ async function rKor(){
           aktivan:k.aktivan!==false
         });
       });
+      await ucitajEmailoveKorisnika();
       // Set current user email
       if(SB_USER){const me=DB.users.find(u=>u.id===SB_USER.id);if(me)me._email=SB_USER.email||'';}
     }catch(e){showToast('Greška: '+e.message,'error');}
@@ -2641,14 +2642,15 @@ async function rKor(){
       <div style="display:flex;align-items:center;gap:11px">
         <div style="width:38px;height:38px;border-radius:50%;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</div>
         <div>
-          <div style="font-weight:600;font-size:13px">${u.name||'–'} ${isMe?'<span class="bdg bbl" style="font-size:9px">Vi</span>':''}</div>
+          <div style="font-weight:600;font-size:13px">${u.name||'–'} ${isMe?'<span class="bdg bbl" style="font-size:9px">Vi</span>':''} ${u.iskljucen?'<span class="bdg brd" style="font-size:9px">Isključen</span>':''}</div>
+          <div style="font-size:11.5px;color:var(--text2)"><i class="ti ti-mail" style="font-size:12px"></i> ${hEscK(u.email||'e-mail nije učitan')}${u.zadnjaPrijava?` <span style="color:var(--text3)">· zadnja prijava ${new Date(u.zadnjaPrijava).toLocaleDateString('hr-HR')}</span>`:''}</div>
           <div style="font-size:11px;color:var(--text2)">${roleBdg} &nbsp;·&nbsp; <span style="color:var(--text3)">${jeds}</span></div>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${isUUID?`<button class="btn bsm bs" onclick="openEditUser('${u.id}')"><i class="ti ti-edit"></i> Uredi</button>`:''}
         ${isUUID?`<button class="btn bsm" style="background:#e6a817;color:#fff;border-color:#c8911a;padding:4px 10px" onclick="changeUserEmail('${u.id}','${u._email||''}','${(u.name||'').replace(/'/g,"\\'")}')"><i class="ti ti-mail"></i> Email</button>`:''}
-        ${isUUID&&!isMe?`<button class="btn bsm bd" onclick="delUser('${u.id}','${(u.name||'').replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button>`:''}
+        ${isUUID&&!isMe?`<button class="btn bsm ${u.iskljucen?'bs':'bd'}" title="${u.iskljucen?'Ponovno uključi':'Isključi (ne može se prijaviti)'}" onclick="delUser('${u.id}','${(u.name||'').replace(/'/g,"\\'")}')"><i class="ti ${u.iskljucen?'ti-user-check':'ti-user-off'}"></i></button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -2672,7 +2674,8 @@ function openEditUser(id){
   eUs=id;const u=DB.users.find(x=>x.id===id);if(!u)return;
   document.getElementById("mut").textContent="Uredi korisnika";
   document.getElementById("mun").value=u.name||"";
-  document.getElementById("muu").value="";  // email hidden in edit
+  document.getElementById("muu").value=u.email||"";
+  document.getElementById("mup").placeholder="Ostavite prazno ako ne mijenjate";
   document.getElementById("mup").value="";
   document.getElementById("mur").value=u.role||"korisnik";
   document.getElementById("mua2").value=u.access||"own";
@@ -2733,28 +2736,20 @@ async function saveUser(){
           name, uloga_nabava:role, access, jedinice_ids:jeds, prim_jed_id:pjid
         }).eq('id',eUs);
         if(error) throw error;
-        // Update password if provided
-        if(pass.length>=6){
-          // Admin cannot change other user passwords via client SDK
-          // Show info message
-          showToast('Profil ažuriran. Lozinku korisnik može promijeniti sam.','info');
-        }
+        // E-mail i lozinka – preko sigurne funkcije na serveru
+        { const stari=DB.users.find(x=>x.id===eUs);
+          const noviEmail=(email&&email.toLowerCase()!==(stari?.email||'').toLowerCase())?email:'';
+          if(pass&&pass.length<6) throw new Error('Lozinka mora imati barem 6 znakova');
+          if(noviEmail||pass){
+            await korisniciAdmin({akcija:'uredi', id:eUs, email:noviEmail||undefined, lozinka:pass||undefined});
+            showToast(`✅ Promijenjeno: ${[noviEmail?'e-mail':'',pass?'lozinka':''].filter(Boolean).join(' i ')}`,'success');
+          } }
       } else {
-        // Create new auth user via Supabase Admin (not available client-side)
-        // Instead: create user and show them their credentials
-        document.getElementById("mua").innerHTML=`<div class="al ali" style="flex-direction:column;align-items:flex-start;gap:8px">
-          <strong><i class="ti ti-info-circle"></i> Kako dodati novog korisnika:</strong>
-          <ol style="margin-left:1rem;font-size:12px;line-height:2">
-            <li>Idi na <a href="https://supabase.com/dashboard/project/kcubssmybiorjtxtbgls/auth/users" target="_blank" style="color:var(--blue)">Supabase → Authentication → Users</a></li>
-            <li>Klikni <strong>Add user → Create new user</strong></li>
-            <li>Email: <strong>${email}</strong> &nbsp; Lozinka: <strong>${pass}</strong> &nbsp; Auto Confirm: uključi</li>
-            <li>Nakon kreiranja, pokreni u SQL Editoru:<br>
-            <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;font-size:11px;display:block;margin-top:4px;word-break:break-all">
-INSERT INTO korisnici (id, name, role, uloga_nabava, access, jedinice_ids, prim_jed_id)
-SELECT id, '${name}', 'korisnik', '${role}', '${access}', '{${jeds.join(',')}}', ${pjid||'null'}
-FROM auth.users WHERE email = '${email}';</code></li>
-          </ol>
-        </div>`;
+        // Novi korisnik: račun za prijavu i profil napravi sigurna funkcija na serveru
+        await korisniciAdmin({akcija:'kreiraj', email, lozinka:pass, name, uloga_nabava:role, access, jedinice_ids:jeds, prim_jed_id:pjid});
+        closeM("mo-user");
+        await rKor();
+        showToast(`✅ Korisnik ${name} napravljen – može se odmah prijaviti (${email})`,'success');
         return;
       }
       closeM("mo-user");
@@ -2770,15 +2765,34 @@ FROM auth.users WHERE email = '${email}';</code></li>
     closeM("mo-user");rKor();
   }
 }
-async function delUser(id,name){
-  if(!confirm(`Obrisati korisnika "${name}"?`))return;
-  const isUUID = typeof id === 'string' && id.includes('-');
-  if(isLive()&&isUUID){
-    const{error}=await SB.from('korisnici').delete().eq('id',id);
-    if(error){showToast('Greška: '+error.message,'error');return;}
-    showToast('✅ Korisnik obrisan','success');
+// ── Korisnici: sigurna funkcija na serveru (Supabase Edge Function "korisnici-admin") ──
+async function korisniciAdmin(body){
+  const {data,error}=await SB.functions.invoke('korisnici-admin',{body});
+  if(error){
+    let msg=error.message;
+    try{ const c=await error.context?.json?.(); if(c?.greska) msg=c.greska; }catch(e){}
+    throw new Error(msg);
   }
-  DB.users=DB.users.filter(u=>u.id!==id);
+  if(data?.greska) throw new Error(data.greska);
+  return data;
+}
+async function ucitajEmailoveKorisnika(){
+  try{
+    const r=await korisniciAdmin({akcija:'popis'});
+    DB.users.forEach(u=>{const k=r.korisnici?.[u.id]; if(k){u.email=k.email; u.zadnjaPrijava=k.zadnja_prijava; u.iskljucen=k.iskljucen;}});
+  }catch(e){ console.warn('Popis e-mailova:',e.message); }
+}
+function hEscK(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function delUser(id,name){
+  const u=DB.users.find(x=>x.id===id);
+  const ukljuci=!!u?.iskljucen;
+  if(!confirm(ukljuci?`Ponovno uključiti korisnika "${name}"? Moći će se opet prijaviti.`
+                     :`Isključiti korisnika "${name}"?\n\nViše se neće moći prijaviti. Njegovi unosi i povijest ostaju sačuvani, a možete ga kasnije ponovno uključiti.`)) return;
+  try{
+    await korisniciAdmin({akcija:ukljuci?'ukljuci':'iskljuci', id});
+    showToast(ukljuci?'✅ Korisnik ponovno uključen':'✅ Korisnik isključen – ne može se prijaviti','success');
+  }catch(e){ showToast('Greška: '+e.message,'error'); }
   rKor();
 }
 
@@ -4159,32 +4173,7 @@ async function loadAllEvidencijaFromSB(){
   }
 }
 
-function changeUserEmail(uid, currentEmail, name){
-  const clean = currentEmail.includes('parkovi.local')||!currentEmail ? '' : currentEmail;
-  const newEmail = prompt(`Unesite pravi email za korisnika "${name}":\n(trenutno: ${clean||'nije postavljen'})`, clean);
-  if(newEmail===null) return; // cancelled
-  if(!newEmail.trim()||!newEmail.includes('@')){
-    alert('Unesite ispravan email!');return;
-  }
-  // Show SQL instructions
-  const sql = `-- Pokreni u Supabase SQL Editor:\nUPDATE auth.users SET email = '${newEmail.trim()}' WHERE id = '${uid}';\n\n-- Ili promijeni lozinku:\nUPDATE auth.users SET encrypted_password = crypt('NovaLozinka123!', gen_salt('bf')) WHERE id = '${uid}';`;
-  
-  const msg = `Za promjenu emaila korisnika "${name}" na:\n${newEmail.trim()}\n\nPokreni u Supabase SQL Editoru:\n\nUPDATE auth.users\nSET email = '${newEmail.trim()}'\nWHERE id = '${uid}';\n\nTakođer postavi novu lozinku:\nUPDATE auth.users\nSET encrypted_password = crypt('Parkovi2026!', gen_salt('bf'))\nWHERE id = '${uid}';\n\n(Kopiraj u SQL Editor i pokreni)`;
-  
-  // Create a nice modal instead of alert
-  const div = document.createElement('div');
-  div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center';
-  div.innerHTML=`<div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:600px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <h3 style="margin:0 0 1rem;font-size:16px"><i class="ti ti-mail" style="color:var(--blue)"></i> Postavi email za ${name}</h3>
-    <p style="font-size:12.5px;color:var(--text2);margin-bottom:.75rem">Kopiraj ovaj SQL i pokreni u <a href="https://supabase.com/dashboard/project/kcubssmybiorjtxtbgls/editor" target="_blank" style="color:var(--blue)">Supabase SQL Editoru</a>:</p>
-    <textarea style="width:100%;height:140px;font-family:monospace;font-size:11.5px;padding:10px;border:1px solid #ccc;border-radius:6px;resize:none" id="email-sql-ta">${`UPDATE auth.users\nSET email = '${newEmail.trim()}',\n    encrypted_password = crypt('Parkovi2026!', gen_salt('bf'))\nWHERE id = '${uid}';\n\n-- Provjera:\nSELECT id, email FROM auth.users WHERE id = '${uid}';`}</textarea>
-    <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
-      <button onclick="navigator.clipboard.writeText(document.getElementById('email-sql-ta').value);this.textContent='✅ Kopirano!'" class="btn bp" style="padding:8px 16px"><i class="ti ti-copy"></i> Kopiraj SQL</button>
-      <button onclick="this.closest('div[style*=fixed]').remove()" class="btn bs" style="padding:8px 16px">Zatvori</button>
-    </div>
-  </div>`;
-  document.body.appendChild(div);
-}
+function changeUserEmail(uid, currentEmail, name){ openEditUser(uid); }
 
 // ======================================================
 // PROMJENA LOZINKE
